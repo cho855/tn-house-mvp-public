@@ -1,0 +1,1458 @@
+﻿<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>地圖查詢</title>
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <style>
+    body { font-family: system-ui; margin: 0; background: #f6f7fb; }
+    .wrap { display: grid; grid-template-columns: 440px 1fr; height: 100vh; }
+
+    .panel { padding: 16px; border-right: 1px solid #ddd; background: #fff; overflow: auto; }
+    h1 { margin: 0 0 10px; font-size: 18px; }
+    .muted { color: #6b7280; font-size: 12px; line-height: 1.6; }
+
+    .row { display: grid; grid-template-columns: 1fr auto; gap: 8px; margin-bottom: 10px; }
+    input { padding: 10px; border: 1px solid #ccc; border-radius: 10px; font-size: 14px; }
+    select { padding: 10px; border: 1px solid #ccc; border-radius: 10px; font-size: 14px; background: #fff; }
+
+    button { padding: 10px 14px; border: none; background: #2563eb; color: #fff; border-radius: 10px; cursor: pointer; font-weight: 700; }
+    button:hover { background: #1d4ed8; }
+
+    .toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0 12px; }
+    .chip {
+      padding: 8px 10px; border: 1px solid #e5e7eb; border-radius: 999px;
+      background: #f9fafb; cursor: pointer; font-size: 12px; color: #374151; user-select: none;
+    }
+    .chip.active { background: #eef2ff; border-color: #c7d2fe; color: #1e40af; font-weight: 800; }
+
+    .box { border: 1px solid #e5e7eb; border-radius: 14px; padding: 12px; background: #fafafa; margin-bottom: 12px; }
+    .accordion { padding: 0; overflow: hidden; }
+    .accordion-toggle {
+      width: 100%; display: flex; align-items: center; gap: 10px; justify-content: space-between;
+      background: transparent; color: #111827; border: none; padding: 12px; border-radius: 14px;
+      cursor: pointer; text-align: left;
+    }
+    .accordion-toggle:hover { background: #f3f4f6; }
+    .accordion-toggle .title { font-weight: 900; font-size: 14px; }
+    .accordion-meta { flex: 1; text-align: right; color: #6b7280; font-size: 12px; }
+    .accordion-chevron { color: #6b7280; font-size: 13px; transition: transform .18s ease; }
+    .accordion-body { display: none; padding: 0 12px 12px; }
+    .accordion.open .accordion-body { display: block; }
+    .accordion.open .accordion-chevron { transform: rotate(180deg); }
+    .kpis { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 10px; }
+    .kpi { background: #fff; border: 1px solid #eee; border-radius: 12px; padding: 10px; }
+    .kpi .label { font-size: 12px; color: #6b7280; }
+    .kpi .value { font-size: 14px; font-weight: 900; margin-top: 4px; }
+
+    .list { margin-top: 10px; display: grid; gap: 8px; }
+    .item { border: 1px solid #e5e7eb; border-radius: 14px; padding: 10px; background: #fff; cursor: pointer; }
+    .item:hover { border-color: #c7d2fe; }
+    .item .title { font-weight: 900; font-size: 13px; }
+    .item .sub { font-size: 12px; color: #6b7280; margin-top: 4px; line-height: 1.5; }
+
+    .notice {
+      border: 1px dashed #c7d2fe;
+      background: #eef2ff;
+      color: #1e3a8a;
+      border-radius: 14px;
+      padding: 10px;
+      font-size: 12px;
+      line-height: 1.6;
+      margin-top: 10px;
+    }
+
+    #map { height: 100%; }
+    .topbar {
+      padding: 10px 16px; border-bottom: 1px solid #eee; font-size: 13px;
+      background: #fafafa; display:flex; justify-content: space-between; align-items:center; gap:10px;
+    }
+    .status { color:#6b7280; font-size:12px; }
+
+    .poi-emoji-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      font-size: 22px;
+      line-height: 1;
+      text-align: center;
+      filter: drop-shadow(0 1px 2px rgba(0,0,0,0.22));
+    }
+
+
+    @media (max-width: 980px){
+      .wrap { grid-template-columns: 1fr; }
+      #map { height: 55vh; }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <div class="panel">
+      <h1>地圖查詢：實價登錄 + 周邊生活機能</h1>
+
+      <div class="row" style="grid-template-columns: 1fr 1fr; margin-top:10px;">
+        <select id="citySelect">
+          <option value="台南市" selected>台南市</option>
+        </select>
+
+        <select id="districtSelect">
+          <option value="" selected>選擇行政區</option>
+        </select>
+      </div>
+
+      <div class="row" style="margin-top:10px;">
+        <input id="addrInput" placeholder="例如台南市政府為：永華路二段6號" />
+        <button id="btnSearch" type="button">查詢</button>
+      </div>
+
+      <div class="muted" style="margin-top:6px;">
+        小提示：先選區域會自動補上「台南市 + 區」，再輸入路名門牌就好。
+      </div>
+
+      <div class="toolbar">
+        <div class="chip active" data-radius="500">半徑500m</div>
+        <div class="chip" data-radius="1000">半徑1000m</div>
+        <div class="chip" data-radius="1500">半徑1500m</div>
+      </div>
+
+      <div class="row" style="margin-top:10px; grid-template-columns: 1fr;">
+        <select id="poiTypeSelect">
+          <option value="all" selected>生活機能：顯示全部</option>
+          <option value="gas_station">只顯示加油站</option>
+          <option value="school">只顯示學校</option>
+          <option value="hospital">只顯示醫院</option>
+          <option value="park">只顯示公園</option>
+          <option value="convenience">只顯示便利商店</option>
+        </select>
+      </div>
+      <div class="box accordion" id="permitQueryAccordion">
+        <button type="button" class="accordion-toggle" data-target="permitQuerySection" aria-expanded="false">
+          <span class="title">使用執照查詢</span>
+          <span class="accordion-meta muted" id="permitHint"></span>
+          <span class="accordion-chevron">▾</span>
+        </button>
+        <div class="accordion-body" id="permitQuerySection">
+          <div class="row" style="grid-template-columns: 1fr; margin-bottom:8px; margin-top:4px;">
+            <input id="permitNoInput" placeholder="執照號碼，例如：(111)南工使字第01767號" />
+          </div>
+          <div class="row" style="grid-template-columns: 140px 1fr; margin-bottom:8px;">
+            <select id="permitCitySelect">
+              <option value="台南市" selected>台南市</option>
+            </select>
+            <select id="permitDistrictSelect">
+              <option value="">選擇行政區</option>
+            </select>
+          </div>
+          <div class="row" style="grid-template-columns: 1fr; margin-bottom:8px;">
+            <input id="permitAddrInput" placeholder="輸入路名門牌，例如：永華路二段6號" />
+          </div>
+          <div class="muted" style="margin:-2px 0 8px; display:flex; align-items:center; gap:8px;">
+            <label style="display:inline-flex; align-items:center; gap:6px; cursor:pointer;">
+              <input id="syncAddrInputs" type="checkbox" checked />
+              <span>同步主查詢地址</span>
+            </label>
+          </div>
+          <div class="row" style="grid-template-columns: auto auto 1fr; margin-bottom:0; align-items:center;">
+            <button id="btnPermitSearch" type="button">查建照</button>
+            <button id="btnPermitClear" type="button" style="background:#e5e7eb;color:#111827;">清除</button>
+            <div class="muted" style="text-align:right;">可輸入使用執照號碼或地址</div>
+          </div>
+          <div class="muted" style="margin-top:10px; line-height:1.7;">
+            以使用執照號碼查詢出之結果是依土地地號預估出地圖大略位置。<br />
+            詳細建築地址請前往
+            <a href="https://cloudbm.nlma.gov.tw/NBUPIC/?organ=IF0" target="_blank" rel="noopener noreferrer">全國建築執照存根</a>查詢
+          </div>
+
+          <div style="margin-top:14px; display:flex; align-items:center; justify-content:space-between; gap:12px;">
+            <div style="font-weight:800; font-size:13px; color:#111827;">使用執照結果</div>
+          </div>
+          <div class="notice" id="permitError" style="display:none;"></div>
+          <div class="list" id="permitResultList"></div>
+
+          <div style="margin-top:14px; display:flex; align-items:center; justify-content:space-between; gap:12px;">
+            <div style="font-weight:800; font-size:13px; color:#111827;">候選地址</div>
+            <div class="muted" id="permitCandidateHint"></div>
+          </div>
+          <div class="notice" id="permitCandidateError" style="display:none;"></div>
+          <div class="list" id="permitCandidateList"></div>
+        </div>
+      </div>
+
+      <div class="box" style="margin-top:10px;">
+        <div class="muted" style="margin-bottom:8px;">台南市預售屋查詢</div>
+        <div class="row" style="grid-template-columns: 1fr 1fr auto; margin-bottom:0;">
+          <select id="presaleDistrictSelect">
+            <option value="">全部區域</option>
+          </select>
+          <select id="presaleProjectSelect">
+            <option value="">全部建案</option>
+          </select>
+          <button id="btnPresaleSearch" type="button">查建案</button>
+        </div>
+      </div>
+
+      <div class="box accordion" id="summaryAccordion">
+        <button type="button" class="accordion-toggle" data-target="summarySection" aria-expanded="false">
+          <span class="title">查詢結果</span>
+          <span class="accordion-meta"></span>
+          <span class="accordion-chevron">▾</span>
+        </button>
+        <div class="accordion-body" id="summarySection">
+          <div id="summaryBox">
+            <div class="muted">查詢結果</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="box accordion" id="txnAccordion">
+        <button type="button" class="accordion-toggle" data-target="txnSection" aria-expanded="false">
+          <span class="title">成交清單</span>
+          <span class="accordion-meta muted" id="txnPointHint"></span>
+          <span class="accordion-chevron">▾</span>
+        </button>
+        <div class="accordion-body" id="txnSection">
+          <div class="list" id="txnList"></div>
+          <div class="notice" id="noPointNotice" style="display:none;"></div>
+        </div>
+      </div>
+
+      <div class="box accordion" id="poiAccordion">
+        <button type="button" class="accordion-toggle" data-target="poiSection" aria-expanded="false">
+          <span class="title">生活機能</span>
+          <span class="accordion-meta muted" id="poiHint"></span>
+          <span class="accordion-chevron">▾</span>
+        </button>
+        <div class="accordion-body" id="poiSection">
+          <div class="notice" id="poiError" style="display:none;"></div>
+          <div class="list" id="poiList"></div>
+        </div>
+      </div>
+
+      <div class="box accordion" id="presaleAccordion">
+        <button type="button" class="accordion-toggle" data-target="presaleSection" aria-expanded="false">
+          <span class="title">預售屋</span>
+          <span class="accordion-meta muted" id="presaleHint"></span>
+          <span class="accordion-chevron">▾</span>
+        </button>
+        <div class="accordion-body" id="presaleSection">
+          <div class="notice" id="presaleError" style="display:none;"></div>
+          <div class="list" id="presaleList"></div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="topbar">
+        <div>地圖</div>
+        <div class="status" id="statusText">等待查詢…</div>
+      </div>
+      <div id="map"></div>
+    </div>
+  </div>
+
+<script src="./api-client.js"></script>
+<script>
+  const { API_BASE, fetchJson } = window.TNHouseApi;
+  const DEFAULT_CENTER = { lat: 23.0, lon: 120.2 };
+  let currentRadius = 500;
+  let currentPoiType = "all";
+  let lastTxnData = null;
+  let draggedCenter = null;
+
+  const TAINAN_DISTRICTS = [
+    "中西區","東區","南區","北區","安平區","安南區",
+    "永康區","歸仁區","新化區","左鎮區","玉井區","楠西區","南化區",
+    "仁德區","關廟區","龍崎區",
+    "官田區","麻豆區","佳里區","西港區","七股區","將軍區","學甲區","北門區",
+    "新營區","後壁區","白河區","東山區","六甲區","下營區","柳營區","鹽水區",
+    "善化區","大內區","山上區","新市區","安定區"
+  ];
+
+  const citySelect = document.getElementById("citySelect");
+  const districtSelect = document.getElementById("districtSelect");
+  const addrInput = document.getElementById("addrInput");
+  const permitNoInput = document.getElementById("permitNoInput");
+  const permitCitySelect = document.getElementById("permitCitySelect");
+  const permitDistrictSelect = document.getElementById("permitDistrictSelect");
+  const permitAddrInput = document.getElementById("permitAddrInput");
+  const syncAddrInputs = document.getElementById("syncAddrInputs");
+  const btnPermitSearch = document.getElementById("btnPermitSearch");
+  const btnPermitClear = document.getElementById("btnPermitClear");
+  const presaleDistrictSelect = document.getElementById("presaleDistrictSelect");
+  const presaleProjectSelect = document.getElementById("presaleProjectSelect");
+  const btnPresaleSearch = document.getElementById("btnPresaleSearch");
+  const poiTypeSelect = document.getElementById("poiTypeSelect");
+
+  function initAccordions() {
+    document.querySelectorAll(".accordion-toggle").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const wrapper = btn.closest(".accordion");
+        const isOpen = wrapper.classList.toggle("open");
+        btn.setAttribute("aria-expanded", isOpen ? "true" : "false");
+      });
+    });
+  }
+  initAccordions();
+
+  function fillDistrictOptions(selectEl, placeholder = "選擇行政區") {
+    selectEl.innerHTML = `<option value="" selected>${placeholder}</option>`;
+    TAINAN_DISTRICTS.forEach(d => {
+      const opt = document.createElement("option");
+      opt.value = d;
+      opt.textContent = d;
+      selectEl.appendChild(opt);
+    });
+  }
+
+  function initDistrictDropdown() {
+    fillDistrictOptions(districtSelect, "選擇行政區");
+  }
+
+  function initPermitDistrictDropdown() {
+    fillDistrictOptions(permitDistrictSelect, "選擇行政區");
+  }
+
+  initDistrictDropdown();
+  initPermitDistrictDropdown();
+
+  function applyPrefix() {
+    const city = citySelect.value || "";
+    const dist = districtSelect.value || "";
+    if (!city) return;
+
+    const cur = addrInput.value.trim();
+    if (/(路|街|段|巷|弄|號)/.test(cur)) return;
+    addrInput.value = dist ? `${city}${dist}` : city;
+  }
+
+  citySelect.addEventListener("change", applyPrefix);
+  districtSelect.addEventListener("change", applyPrefix);
+
+  function buildPermitAddressPrefix(rawAddress) {
+    const city = permitCitySelect.value || "台南市";
+    const dist = permitDistrictSelect.value || "";
+    const cur = (rawAddress || "").trim();
+    if (!cur) return "";
+    if (/^台南市/.test(cur) || /^臺南市/.test(cur)) return cur;
+    return `${city}${dist}${cur}`;
+  }
+
+  function syncPermitDistrictFromAddress(addr) {
+    if (!addr) return;
+    if (addr.includes("台南市") || addr.includes("臺南市")) permitCitySelect.value = "台南市";
+    const found = TAINAN_DISTRICTS.find(d => String(addr).includes(d));
+    if (found) permitDistrictSelect.value = found;
+  }
+
+  function applyPermitPrefix() {
+    const city = permitCitySelect.value || "台南市";
+    const dist = permitDistrictSelect.value || "";
+    const cur = permitAddrInput.value.trim();
+    if (!city || !cur) return;
+    if (/^台南市/.test(cur) || /^臺南市/.test(cur)) return;
+    if (/(路|街|段|巷|弄|號)/.test(cur)) return;
+    permitAddrInput.value = dist ? `${city}${dist}` : city;
+  }
+
+  permitCitySelect.addEventListener("change", () => {
+    if (citySelect.value !== permitCitySelect.value) citySelect.value = permitCitySelect.value;
+    applyPermitPrefix();
+  });
+  permitDistrictSelect.addEventListener("change", () => {
+    if (districtSelect.value !== permitDistrictSelect.value) districtSelect.value = permitDistrictSelect.value;
+    applyPermitPrefix();
+  });
+  citySelect.addEventListener("change", () => {
+    if (permitCitySelect.value !== citySelect.value) permitCitySelect.value = citySelect.value || "台南市";
+  });
+  districtSelect.addEventListener("change", () => {
+    if (permitDistrictSelect.value !== districtSelect.value) permitDistrictSelect.value = districtSelect.value;
+  });
+
+  function syncDistrictFromAddress(addr) {
+    if (!addr) return;
+    const city = "台南市";
+    if (addr.includes(city)) citySelect.value = city;
+    const found = TAINAN_DISTRICTS.find(d => addr.includes(d));
+    if (found) districtSelect.value = found;
+  }
+
+  function syncAddressInputs(source) {
+    if (!syncAddrInputs?.checked) return;
+    if (source === "main") {
+      if (permitAddrInput.value !== addrInput.value) permitAddrInput.value = addrInput.value;
+    } else if (source === "permit") {
+      if (addrInput.value !== permitAddrInput.value) addrInput.value = permitAddrInput.value;
+    }
+  }
+
+  if (!window.L) {
+    document.getElementById("map").innerHTML = `<div style="padding:16px;color:#991b1b;font-size:14px;line-height:1.7;">地圖元件載入失敗，請確認網路是否可連到 jsDelivr 與 OpenStreetMap，然後重新整理頁面。</div>`;
+    throw new Error("Leaflet failed to load");
+  }
+
+  const map = L.map("map").setView([DEFAULT_CENTER.lat, DEFAULT_CENTER.lon], 13);
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 19,
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+  }).addTo(map);
+
+  const centerLayer = L.layerGroup().addTo(map);
+  const txnLayer = L.layerGroup().addTo(map);
+  const poiLayer = L.layerGroup().addTo(map);
+  const presaleLayer = L.layerGroup().addTo(map);
+  const permitCandidateLayer = L.layerGroup().addTo(map);
+
+  const statusText = document.getElementById("statusText");
+  const txnPointHint = document.getElementById("txnPointHint");
+  const noPointNotice = document.getElementById("noPointNotice");
+  const permitHint = document.getElementById("permitHint");
+  const permitError = document.getElementById("permitError");
+  const permitCandidateHint = document.getElementById("permitCandidateHint");
+  const permitCandidateError = document.getElementById("permitCandidateError");
+  const poiHint = document.getElementById("poiHint");
+  const poiError = document.getElementById("poiError");
+  const presaleHint = document.getElementById("presaleHint");
+  const presaleError = document.getElementById("presaleError");
+
+  function setStatus(msg) { statusText.textContent = msg; }
+
+  function fmtMoney(n) {
+    if (n === null || n === undefined) return "-";
+    const x = Number(n);
+    if (Number.isNaN(x)) return "-";
+    return x.toLocaleString("zh-Hant");
+  }
+
+
+  function fmtDistance(n) {
+    if (n === null || n === undefined) return "-";
+    const x = Number(n);
+    if (Number.isNaN(x)) return "-";
+    return Math.round(x).toLocaleString("zh-Hant");
+  }
+
+  function fmtUnitPriceWanPerSqm(n) {
+    if (n === null || n === undefined) return "-";
+    const x = Number(n);
+    if (Number.isNaN(x)) return "-";
+    return `約 ${(x / 10000).toFixed(2)}萬`;
+  }
+  function clearAllLayers() {
+    centerLayer.clearLayers();
+    txnLayer.clearLayers();
+    poiLayer.clearLayers();
+    presaleLayer.clearLayers();
+    permitCandidateLayer.clearLayers();
+  }
+
+
+  function renderExploreSummary(center) {
+    const box = document.getElementById("summaryBox");
+    box.innerHTML = `
+      <div style="font-weight:900; font-size:16px; margin-bottom:8px;">查詢結果</div>
+      <div style="font-size:13px; line-height:1.9; color:#374151;">
+        <div><span style="color:#6b7280;">模式：</span><b>自由拖曳探索</b></div>
+        <div><span style="color:#6b7280;">中心點：</span><b>${center.lat.toFixed(6)}, ${center.lon.toFixed(6)}</b></div>
+        <div><span style="color:#6b7280;">搜尋半徑：</span><b>${currentRadius}m</b></div>
+      </div>
+      <div class="muted" style="margin-top:10px;">
+        可以拖曳地圖中央藍點查看周邊生活機能與預售屋
+      </div>
+    `;
+  }
+
+  function renderPermitSearchSummary(meta, items) {
+    const box = document.getElementById("summaryBox");
+    const qDistrict = meta?.district || districtSelect.value || "未指定";
+    const qAddress = meta?.address || permitAddrInput.value.trim() || "-";
+    const qPermitNo = meta?.permit_no || permitNoInput.value.trim() || "-";
+    const modeText = meta?.mode === "address" ? "地址附近查詢" : "使用執照查詢";
+    const matchLevel = meta?.center?.match_level || "";
+    box.innerHTML = `
+      <div style="font-weight:900; font-size:16px; margin-bottom:8px;">查詢結果</div>
+      <div style="font-size:13px; line-height:1.9; color:#374151;">
+        <div><span style="color:#6b7280;">模式：</span><b>${modeText}</b></div>
+        <div><span style="color:#6b7280;">行政區：</span><b>${qDistrict}</b></div>
+        <div><span style="color:#6b7280;">地址條件：</span><b>${qAddress}</b></div>
+        <div><span style="color:#6b7280;">執照號碼：</span><b>${qPermitNo}</b></div>
+        <div><span style="color:#6b7280;">符合筆數：</span><b>${items.length}</b></div>
+        ${matchLevel ? `<div><span style="color:#6b7280;">定位層級：</span><b>${matchLevel}</b></div>` : ""}
+      </div>
+    `;
+  }
+
+  function renderPermitSearchResults(items) {
+    const list = document.getElementById("permitResultList");
+    list.innerHTML = "";
+
+    if (!items.length) {
+      list.innerHTML = `<div class="muted">查無符合的使用執照資料。</div>`;
+      return;
+    }
+
+    items.forEach((item) => {
+      const permitNo = item.permit_no || "-";
+      const district = item.district || "-";
+      const address = item.address_raw || item.address || "-";
+      const issueDate = item.issue_date || "-";
+      const useKind = item.use_kind || item.usage || "-";
+      const floorCount = item.floor_count || "-";
+      const householdCount = item.household_count ?? item.units ?? "-";
+      const heightM = item.height_m ?? "-";
+      const distanceM = item.distance_m != null ? `${fmtDistance(item.distance_m)} m` : null;
+      const lat = Number(item.lat);
+      const lon = Number(item.lon);
+      const hasPoint = !Number.isNaN(lat) && !Number.isNaN(lon);
+      const heightText = heightM === "-" ? "-" : `${heightM} m`;
+
+      const el = document.createElement("div");
+      el.className = "item";
+      el.innerHTML = `
+        <div class="title">📘 ${permitNo}</div>
+        <div class="sub">
+          行政區：${district}<br/>
+          地址：${address}<br/>
+          ${distanceM ? `距離：${distanceM}<br/>` : ""}
+          發照日：${issueDate}<br/>
+          用途：${useKind}<br/>
+          樓層：${floorCount}<br/>
+          戶數：${householdCount}<br/>
+          高度：${heightText}<br/>
+          定位：${hasPoint ? "可定位" : "無可用座標"}
+        </div>
+      `;
+
+      el.addEventListener("click", async () => {
+        if (hasPoint) {
+          draggedCenter = { lat, lon };
+          lastTxnData = null;
+          map.setView([lat, lon], 17);
+          renderCenterAndRadius();
+          renderExploreSummary(draggedCenter);
+          setStatus("已定位使用執照");
+          await Promise.all([
+            renderPOIByCenter(draggedCenter),
+            renderPresaleByCenter(draggedCenter)
+          ]);
+        }
+        await loadPermitCandidates(item);
+      });
+
+      list.appendChild(el);
+    });
+  }
+
+
+  function clearPermitCandidates() {
+    permitCandidateHint.textContent = "";
+    permitCandidateError.style.display = "none";
+    permitCandidateError.innerHTML = "";
+    document.getElementById("permitCandidateList").innerHTML = "";
+    permitCandidateLayer.clearLayers();
+  }
+
+  async function loadPermitCandidates(item) {
+    const permitNo = item?.permit_no;
+    if (!permitNo) {
+      clearPermitCandidates();
+      return;
+    }
+
+    clearPermitCandidates();
+    permitCandidateHint.textContent = "候選地址查詢中…";
+
+    try {
+      const [summary, mapSummary] = await Promise.all([
+        fetchPermitAddressSummary(permitNo),
+        fetchPermitAddressCandidatesSummary(permitNo, 10)
+      ]);
+
+      const list = document.getElementById("permitCandidateList");
+      const items = mapSummary.items || [];
+      permitCandidateHint.textContent = `${items.length} 筆`;
+
+      const topList = (summary.top_addresses || []).reduce((acc, row) => {
+        acc[row.addr_display] = row;
+        return acc;
+      }, {});
+
+      if (!items.length) {
+        list.innerHTML = `<div class="muted">此使用執照目前沒有可顯示的候選地址。</div>`;
+        return;
+      }
+
+      list.innerHTML = `
+        <div class="item" style="cursor:default;">
+          <div class="title">推估主要地址</div>
+          <div class="sub">
+            主要地址：${summary.best_address || "-"}<br/>
+            命中次數：${summary.best_hit_count ?? "-"}<br/>
+            最高分數：${summary.best_max_score ?? "-"}
+          </div>
+        </div>
+      `;
+
+      items.forEach((cand, idx) => {
+        const lat = Number(cand.lat);
+        const lon = Number(cand.lon);
+        const hitMeta = topList[cand.addr_display] || {};
+        const el = document.createElement("div");
+        el.className = "item";
+        el.innerHTML = `
+          <div class="title">${idx === 0 ? "Top1 候選門牌" : `Top${idx + 1} 候選門牌`}</div>
+          <div class="sub">
+            地址：${cand.addr_display || "-"}<br/>
+            命中次數：${hitMeta.hit_count ?? cand.hit_count ?? "-"}<br/>
+            最近距離：${cand.min_distance_m != null ? fmtDistance(cand.min_distance_m) : "-"}<br/>
+            平均距離：${cand.avg_distance_m != null ? fmtDistance(cand.avg_distance_m) : "-"}<br/>
+            最高分數：${cand.max_score ?? hitMeta.max_score ?? "-"}
+          </div>
+        `;
+
+        el.addEventListener("click", async () => {
+          draggedCenter = { lat, lon };
+          lastTxnData = null;
+          map.setView([lat, lon], 18);
+          renderCenterAndRadius();
+          renderExploreSummary(draggedCenter);
+          setStatus("已定位候選地址");
+          await Promise.all([
+            renderPOIByCenter(draggedCenter),
+            renderPresaleByCenter(draggedCenter)
+          ]);
+        });
+        list.appendChild(el);
+
+        const marker = L.marker([lat, lon], {
+          icon: makePoiEmojiIcon(idx === 0 ? "presale" : "poi")
+        }).addTo(permitCandidateLayer);
+        marker.bindPopup(`<div><b>${idx === 0 ? "Top1 候選門牌" : `Top${idx + 1} 候選門牌`}</b><br/>${cand.addr_display || "-"}</div>`);
+      });
+    } catch (e) {
+      console.error(e);
+      permitCandidateHint.textContent = "候選地址查詢失敗";
+      permitCandidateError.style.display = "block";
+      permitCandidateError.innerHTML = `<b>候選地址查詢失敗</b><br/>錯誤：<code>${String(e)}</code>`;
+    }
+  }
+
+  function getPoiEmoji(type) {
+    const icons = {
+      school: "🏫",
+      convenience: "🏪",
+      hospital: "🏥",
+      park: "🌳",
+      gas_station: "⛽",
+      presale: "🏢"
+    };
+    return icons[type] || "📍";
+  }
+
+  function makePoiEmojiIcon(type) {
+    return L.divIcon({
+      className: "poi-emoji-icon",
+      html: `<div>${getPoiEmoji(type)}</div>`,
+      iconSize: [28, 28],
+      iconAnchor: [14, 14],
+      popupAnchor: [0, -10]
+    });
+  }
+
+  function makeCenterIcon() {
+    return L.icon({
+      iconUrl: "https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/images/marker-icon.png",
+      iconRetinaUrl: "https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/images/marker-icon-2x.png",
+      shadowUrl: "https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/images/marker-shadow.png",
+      iconSize: [25, 41],
+      iconAnchor: [12, 41],
+      popupAnchor: [1, -34],
+      shadowSize: [41, 41]
+    });
+  }
+
+  function makeTxnStyle() {
+    return {
+      radius: 6,
+      weight: 1,
+      color: "#ffffff",
+      opacity: 1,
+      fillColor: "#dc2626",
+      fillOpacity: 0.9
+    };
+  }
+
+  function normalizeConvenienceBrand(p) {
+    const extra = p.extra || {};
+    const text = [extra.company_name || "", p.subtype || "", p.name || ""].join(" ");
+
+    if (/全聯/.test(text)) return "全聯";
+    if (/全家/.test(text)) return "全家";
+    if (/萊爾富/.test(text)) return "萊爾富";
+    if (/統一超商|7-ELEVEN|7-11/i.test(text)) return "7-ELEVEN";
+    if (/來來超商|OK|OKmart/i.test(text)) return "OKmart";
+    return "便利商店";
+  }
+
+  async function fetchTxnsByAddress(address, radius_m) {
+    const url = `${API_BASE}/nearby_txn_by_address?address=${encodeURIComponent(address)}&radius_m=${radius_m}&limit=120`;
+    return await fetchJson(url);
+  }
+
+  function normalizePermitSearchResult(data) {
+    if (!data) return { items: [] };
+    if (Array.isArray(data.items)) return data;
+    if (Array.isArray(data)) return { items: data };
+    const possibleItems = data.results || data.data || data.records || [];
+    if (Array.isArray(possibleItems)) {
+      return {
+        query_address: data.query_address || "",
+        city: data.city || "",
+        district: data.district || "",
+        permit_no: data.permit_no || "",
+        center: data.center || null,
+        items: possibleItems,
+      };
+    }
+    return { items: [] };
+  }
+
+  async function fetchPermitNearbyByAddress(address) {
+    const url = `${API_BASE}/nearby_by_address?address=${encodeURIComponent(address)}`;
+    return await fetchJson(url);
+  }
+
+  async function fetchPermitSearch({ district = "", address = "", permitNo = "", limit = 20 } = {}) {
+    const url =
+      `${API_BASE}/permits/search?city=${encodeURIComponent("台南市")}` +
+      `&district=${encodeURIComponent(district)}` +
+      `&address=${encodeURIComponent(address)}` +
+      `&permit_no=${encodeURIComponent(permitNo)}` +
+      `&limit=${encodeURIComponent(limit)}`;
+    return await fetchJson(url);
+  }
+
+  async function fetchPOI(lat, lon, radius_m, limit = 100) {
+    const url =
+      `${API_BASE}/nearby_poi?lat=${encodeURIComponent(lat)}` +
+      `&lon=${encodeURIComponent(lon)}` +
+      `&radius_m=${encodeURIComponent(radius_m)}` +
+      `&limit=${encodeURIComponent(limit)}`;
+    return await fetchJson(url);
+  }
+
+  async function fetchPresale(lat, lon, radius_m, limit = 100) {
+    const url =
+      `${API_BASE}/nearby_presale?lat=${encodeURIComponent(lat)}` +
+      `&lon=${encodeURIComponent(lon)}` +
+      `&radius_m=${encodeURIComponent(radius_m)}` +
+      `&limit=${encodeURIComponent(limit)}`;
+    return await fetchJson(url);
+  }
+
+  async function fetchPresaleOptions(district = "") {
+    const url = `${API_BASE}/presale_options?district=${encodeURIComponent(district)}`;
+    return await fetchJson(url);
+  }
+
+  async function fetchPresaleSearch(district = "", projectName = "", limit = 100) {
+    const url =
+      `${API_BASE}/presale_search?district=${encodeURIComponent(district)}` +
+      `&project_name=${encodeURIComponent(projectName)}` +
+      `&limit=${encodeURIComponent(limit)}`;
+    return await fetchJson(url);
+  }
+
+  async function fetchPermitAddressSummary(permitNo) {
+    const url = `${API_BASE}/permit_address_summary?permit_no=${encodeURIComponent(permitNo)}`;
+    return await fetchJson(url);
+  }
+
+  async function fetchPermitAddressCandidatesSummary(permitNo, limit = 10) {
+    const url = `${API_BASE}/permit_address_candidates_map_summary?permit_no=${encodeURIComponent(permitNo)}&limit=${encodeURIComponent(limit)}`;
+    return await fetchJson(url);
+  }
+
+  function renderSummary(txnData) {
+    const box = document.getElementById("summaryBox");
+    const addr = txnData.query_address || "-";
+    const srcRaw = txnData.center?.source || "-";
+
+    const s = txnData.summary || {};
+    const n = s.n ?? 0;
+    const p25 = s.p25_unit_price_sqm ?? null;
+    const p50 = s.p50_unit_price_sqm ?? null;
+    const p75 = s.p75_unit_price_sqm ?? null;
+
+    const centerOk = !!(txnData.center?.lat && txnData.center?.lon);
+
+    function prettyCenterSource(src) {
+      const m = {
+        ADDRESS_POINT: "門牌點",
+        ADDRESS_POINT_BASE: "門牌代表點",
+        LAND_SECTION: "地段中心",
+        NONE: "無"
+      };
+      return m[src] || src || "-";
+    }
+
+    box.innerHTML = `
+      <div style="font-size:13px; line-height:1.9; color:#374151;">
+        <div><span style="color:#6b7280;">地址：</span><b>${addr}</b></div>
+        <div><span style="color:#6b7280;">定位來源：</span><b>${prettyCenterSource(srcRaw)}</b></div>
+        <div><span style="color:#6b7280;">搜尋半徑：</span><b>${currentRadius}m</b></div>
+        <div><span style="color:#6b7280;">中心點：</span><b>${centerOk ? "已找到" : "找不到"}</b></div>
+      </div>
+    `;
+  }
+
+
+  function renderCenterAndRadius(txnData = null) {
+    centerLayer.clearLayers();
+
+    const c = txnData?.center;
+    const baseCenter = draggedCenter || (
+      c && c.lat && c.lon
+        ? { lat: Number(c.lat), lon: Number(c.lon) }
+        : DEFAULT_CENTER
+    );
+    const center = [baseCenter.lat, baseCenter.lon];
+
+    const circle = L.circle(center, {
+      radius: currentRadius,
+      color: "#2563eb",
+      fillColor: "#60a5fa",
+      fillOpacity: 0.10
+    }).addTo(centerLayer);
+    circle.bindPopup(`半徑 ${currentRadius}m`);
+
+    const marker = L.marker(center, { draggable: true, icon: makeCenterIcon() }).addTo(centerLayer);
+    if (txnData?.query_address) {
+      marker.bindPopup(`<b>查詢中心</b><br/>${txnData.query_address}<br/>可拖曳重新查周邊資料`);
+    } else {
+      marker.bindPopup(`<b>探索中心</b><br/>可直接拖曳查看周邊生活機能與預售屋`);
+    }
+
+    marker.on("drag", (e) => {
+      const latlng = e.target.getLatLng();
+      circle.setLatLng(latlng);
+    });
+
+    marker.on("dragend", async (e) => {
+      const latlng = e.target.getLatLng();
+      draggedCenter = { lat: latlng.lat, lon: latlng.lng };
+      circle.setLatLng(latlng);
+      poiHint.textContent = "中心點已拖曳，重新查詢周邊資料…";
+      presaleHint.textContent = "中心點已拖曳，重新查詢預售屋…";
+
+      try {
+        await Promise.all([
+          renderPOIByCenter(draggedCenter),
+          renderPresaleByCenter(draggedCenter)
+        ]);
+        if (!lastTxnData) renderExploreSummary(draggedCenter);
+      } catch (err) {
+        console.error(err);
+        poiHint.textContent = "拖曳後周邊查詢失敗";
+        presaleHint.textContent = "拖曳後預售屋查詢失敗";
+      }
+    });
+
+    map.setView(center, 16);
+  }
+
+  function getTxnLatLon(item) {
+    const lat = item.txn_lat ?? item.lat ?? item.y ?? null;
+    const lon = item.txn_lon ?? item.lon ?? item.x ?? null;
+    if (lat === null || lon === null) return null;
+    const la = Number(lat), lo = Number(lon);
+    if (Number.isNaN(la) || Number.isNaN(lo)) return null;
+    return { lat: la, lon: lo };
+  }
+
+  function renderTxnsWithPoints(txnData) {
+    const list = document.getElementById("txnList");
+    list.innerHTML = "";
+    txnLayer.clearLayers();
+    noPointNotice.style.display = "none";
+    txnPointHint.textContent = "";
+
+    const items = txnData.items || [];
+    if (!items.length) {
+      list.innerHTML = `<div class="muted">此半徑內沒有成交資料。</div>`;
+      return;
+    }
+
+    let hasPointCount = 0;
+    for (const t of items) {
+      if (getTxnLatLon(t)) hasPointCount++;
+    }
+
+    if (hasPointCount > 0) {
+      txnPointHint.textContent = `${hasPointCount}/${items.length} 筆`;
+    } else {
+      txnPointHint.textContent = `0/${items.length} 筆`;
+      noPointNotice.style.display = "block";
+      noPointNotice.innerHTML = `
+        <b>目前這批成交資料沒有回傳每筆座標，所以地圖畫不出成交點。</b><br/>
+        只要在 <code>/nearby_txn_by_address</code> 回傳 <code>txn_lat</code> / <code>txn_lon</code>，這頁就會自動畫點。
+      `;
+    }
+
+    const markerById = new Map();
+
+    items.forEach((t) => {
+      const id = t.id ?? "";
+      const title = (t.address_norm || "(無地址)").trim();
+      const date = t.trade_date || "-";
+      const unit = t.unit_price_sqm ?? null;
+      const total = t.total_price ?? null;
+      const dist = t.distance_m ?? null;
+      const district = (t.district || "").trim();
+      const coord = getTxnLatLon(t);
+
+      if (coord) {
+        const cm = L.circleMarker([coord.lat, coord.lon], makeTxnStyle()).addTo(txnLayer);
+        cm.bindPopup(`
+          <b>🔴 ${title}</b><br/>
+          行政區：${district || "-"}<br/>
+          日期：${date}<br/>
+          單價(平方公尺)：${fmtUnitPriceWanPerSqm(unit)}<br/>
+          總價：${fmtMoney(total)}<br/>
+          距離：${fmtDistance(dist)} m
+        `);
+        if (id !== "") markerById.set(String(id), cm);
+      }
+
+      const el = document.createElement("div");
+      el.className = "item";
+      el.innerHTML = `
+        <div class="title">🔴 ${title}</div>
+        <div class="sub">
+          行政區：${district || "-"}<br/>
+          日期：${date}<br/>
+          單價(平方公尺)：${fmtUnitPriceWanPerSqm(unit)} ｜ 總價：${fmtMoney(total)}<br/>
+          距離：${fmtDistance(dist)} m
+          ${coord ? "" : "<br/><span class='muted'>（此筆無座標，無法定位）</span>"}
+        </div>
+      `;
+
+      el.addEventListener("click", () => {
+        if (coord) {
+          map.setView([coord.lat, coord.lon], 17);
+          const mk = markerById.get(String(id));
+          if (mk) mk.openPopup();
+        } else if (txnData.center?.lat && txnData.center?.lon) {
+          map.setView([txnData.center.lat, txnData.center.lon], 16);
+        }
+      });
+
+      list.appendChild(el);
+    });
+  }
+
+  async function renderPOIByCenter(center) {
+    const list = document.getElementById("poiList");
+    list.innerHTML = "";
+    poiLayer.clearLayers();
+    poiError.style.display = "none";
+    poiError.innerHTML = "";
+    poiHint.textContent = "";
+
+    if (!center || center.lat == null || center.lon == null) {
+      list.innerHTML = `<div class="muted">需要有效中心點，才能顯示生活機能。</div>`;
+      return;
+    }
+
+    try {
+      poiHint.textContent = "生活機能查詢中…";
+      const poiData = await fetchPOI(center.lat, center.lon, currentRadius, 100);
+      const allItems = poiData.items || [];
+      const items = currentPoiType === "all" ? allItems : allItems.filter(x => x.category === currentPoiType);
+      poiHint.textContent = `${items.length} 筆`;
+
+      if (!items.length) {
+        list.innerHTML = `<div class="muted">此分類目前沒有生活機能資料。</div>`;
+        return;
+      }
+
+      items.forEach((p) => {
+        const lat = Number(p.lat);
+        const lon = Number(p.lon);
+        if (Number.isNaN(lat) || Number.isNaN(lon)) return;
+
+        const type = (p.category || "").trim();
+        const rawName = (p.name || "(無名稱)").trim();
+        const subtype = (p.subtype || "").trim();
+        const district = (p.district || "").trim();
+        const dist = (p.dist_m ?? p.distance_m ?? null);
+        const addrRaw = (p.addr_raw || "").trim();
+        const extra = p.extra || {};
+        const name = type === "convenience" ? normalizeConvenienceBrand(p) : rawName;
+
+        const marker = L.marker([lat, lon], { icon: makePoiEmojiIcon(type) }).addTo(poiLayer);
+        const popupLines = [
+          `<b>${getPoiEmoji(type)} ${name}</b>`,
+          `類型：${type || "-"}`,
+          type === "park" ? null : (district ? `行政區：${district}` : null),
+          type === "park" ? null : (subtype ? `細類：${subtype}` : null),
+          extra.stage ? `學段：${extra.stage}` : null,
+          extra.school_type ? `學校類型：${extra.school_type}` : null,
+          extra.phone ? `電話：${extra.phone}` : null,
+          extra.manager_unit ? `管理單位：${extra.manager_unit}` : null,
+          `距離：${dist != null ? fmtDistance(dist) : "-"} m`,
+          addrRaw ? `地址：${addrRaw}` : null
+        ].filter(Boolean);
+        marker.bindPopup(popupLines.join("<br/>"));
+
+        const subLines = [];
+        if (type === "school") {
+          subLines.push(`${extra.stage || "-"} ｜ ${extra.school_type || subtype || "-"} ｜ ${district || "-"}`);
+        } else if (type === "hospital") {
+          subLines.push(`醫院 ｜ ${district || "-"}`);
+        } else if (type === "park") {
+        } else if (type === "convenience") {
+          subLines.push(`便利商店 ｜ ${district || "-"}`);
+        } else {
+          subLines.push(`${subtype || "-"} ｜ ${district || "-"}`);
+        }
+        subLines.push(`距離：${dist != null ? fmtDistance(dist) : "-"} m`);
+        if (addrRaw) subLines.push(addrRaw);
+
+        const el = document.createElement("div");
+        el.className = "item";
+        el.innerHTML = `
+          <div class="title">${getPoiEmoji(type)} ${name}</div>
+          <div class="sub">${subLines.join("<br/>")}</div>
+        `;
+        el.addEventListener("click", () => {
+          map.setView([lat, lon], 17);
+          marker.openPopup();
+        });
+        list.appendChild(el);
+      });
+    } catch (e) {
+      console.error(e);
+      poiHint.textContent = "生活機能查詢失敗";
+      poiError.style.display = "block";
+      poiError.innerHTML = `<b>生活機能查詢失敗</b><br/>錯誤：<code>${String(e)}</code>`;
+    }
+  }
+
+  async function renderPOI(txnData) {
+    const c = txnData.center;
+    if (!c || !c.lat || !c.lon) {
+      document.getElementById("poiList").innerHTML = `<div class="muted">需要先查到中心點，才能顯示生活機能。</div>`;
+      poiLayer.clearLayers();
+      return;
+    }
+
+    const center = draggedCenter || { lat: Number(c.lat), lon: Number(c.lon) };
+    await renderPOIByCenter(center);
+  }
+
+  function renderPresaleItems(items, options = {}) {
+    const list = document.getElementById("presaleList");
+    const fitBounds = options.fitBounds !== false;
+    list.innerHTML = "";
+    presaleLayer.clearLayers();
+
+    if (!items.length) {
+      list.innerHTML = `<div class="muted">查無符合條件的預售屋資料。</div>`;
+      return;
+    }
+
+    const bounds = [];
+    items.forEach((p) => {
+      const lat = Number(p.lat);
+      const lon = Number(p.lon);
+      if (Number.isNaN(lat) || Number.isNaN(lon)) return;
+      bounds.push([lat, lon]);
+
+      const title = (p.project_name || "(未命名建案)").trim();
+      const district = (p.district || "").trim();
+      const road = (p.road || p.address_norm || p.address_seed || "").trim();
+      const builder = (p.builder || "").trim();
+      const permitNo = (p.building_permit_no || "").trim();
+      const household = p.household ?? null;
+      const dist = p.dist_m ?? p.distance_m ?? null;
+      const price = p.price_summary || null;
+
+      const marker = L.marker([lat, lon], { icon: makePoiEmojiIcon("presale") }).addTo(presaleLayer);
+      const popupLines = [
+        `<b>${getPoiEmoji("presale")} ${title}</b>`,
+        district ? `行政區：${district}` : null,
+        dist != null ? `距離：${fmtDistance(dist)} m` : null,
+        road ? `地址：${road}` : null,
+        permitNo ? `建照：${permitNo}` : null,
+        builder ? `建商：${builder}` : null,
+        household != null ? `戶數：${fmtMoney(household)}` : null,
+        price?.txn_count ? `成交筆數：${fmtMoney(price.txn_count)}` : null,
+        price?.latest_trade_date ? `最近成交日期：${price.latest_trade_date}` : null,
+        price?.latest_unit_price_sqm != null ? `最近單價：${fmtUnitPriceWanPerSqm(price.latest_unit_price_sqm)} /平方公尺` : null,
+        price?.avg_unit_price_sqm != null ? `平均單價：${fmtUnitPriceWanPerSqm(price.avg_unit_price_sqm)} /平方公尺` : null
+      ].filter(Boolean);
+      marker.bindPopup(popupLines.join("<br/>"));
+
+      const subLines = [];
+      subLines.push(dist != null ? `${district || "-"} ｜ 距離：${fmtDistance(dist)} m` : `${district || "-"}`);
+      if (road) subLines.push(road);
+      if (permitNo) subLines.push(`建照：${permitNo}`);
+      if (builder) subLines.push(`建商：${builder}`);
+      if (household != null) subLines.push(`戶數：${fmtMoney(household)}`);
+      if (price?.txn_count) subLines.push(`成交筆數：${fmtMoney(price.txn_count)}`);
+      if (price?.latest_unit_price_sqm != null) subLines.push(`最近單價：${fmtUnitPriceWanPerSqm(price.latest_unit_price_sqm)} /平方公尺`);
+      if (price?.avg_unit_price_sqm != null) subLines.push(`平均單價：${fmtUnitPriceWanPerSqm(price.avg_unit_price_sqm)} /平方公尺`);
+      if (price?.latest_trade_date) subLines.push(`最近成交日期：${price.latest_trade_date}`);
+
+      const el = document.createElement("div");
+      el.className = "item";
+      el.innerHTML = `
+        <div class="title">${getPoiEmoji("presale")} ${title}</div>
+        <div class="sub">${subLines.join("<br/>")}</div>
+      `;
+      el.addEventListener("click", () => {
+        map.setView([lat, lon], 17);
+        marker.openPopup();
+      });
+      list.appendChild(el);
+    });
+
+    if (fitBounds && bounds.length === 1) {
+      map.setView(bounds[0], 17);
+    } else if (fitBounds && bounds.length > 1) {
+      map.fitBounds(bounds, { padding: [24, 24] });
+    }
+  }
+
+  async function renderPresaleByCenter(center) {
+    const list = document.getElementById("presaleList");
+    list.innerHTML = "";
+    presaleLayer.clearLayers();
+    presaleError.style.display = "none";
+    presaleError.innerHTML = "";
+    presaleHint.textContent = "";
+
+    if (!center || center.lat == null || center.lon == null) {
+      list.innerHTML = `<div class="muted">需要有效中心點，才能顯示預售屋。</div>`;
+      return;
+    }
+
+    try {
+      presaleHint.textContent = "預售屋查詢中…";
+      const presaleData = await fetchPresale(center.lat, center.lon, currentRadius, 100);
+      const items = presaleData.items || [];
+      presaleHint.textContent = `${items.length} 筆`;
+
+      if (!items.length) {
+        list.innerHTML = `<div class="muted">此半徑內沒有預售屋資料。</div>`;
+        return;
+      }
+
+      renderPresaleItems(items, { fitBounds: false });
+    } catch (e) {
+      console.error(e);
+      presaleHint.textContent = "預售屋查詢失敗";
+      presaleError.style.display = "block";
+      presaleError.innerHTML = `<b>預售屋查詢失敗</b><br/>錯誤：<code>${String(e)}</code>`;
+    }
+  }
+
+  async function renderPresale(txnData) {
+    const c = txnData.center;
+    if (!c || !c.lat || !c.lon) {
+      document.getElementById("presaleList").innerHTML = `<div class="muted">需要先查到中心點，才能顯示預售屋。</div>`;
+      presaleLayer.clearLayers();
+      return;
+    }
+
+    const center = draggedCenter || { lat: Number(c.lat), lon: Number(c.lon) };
+    await renderPresaleByCenter(center);
+  }
+
+  async function runSearch() {
+    const addr = document.getElementById("addrInput").value.trim();
+    if (!addr) { alert("請輸入地址"); return; }
+
+    const prevDraggedCenter = draggedCenter ? { ...draggedCenter } : null;
+    const prevTxnData = lastTxnData;
+
+    setStatus("查詢中…");
+    draggedCenter = null;
+    clearAllLayers();
+    txnPointHint.textContent = "";
+    noPointNotice.style.display = "none";
+    poiHint.textContent = "";
+    poiError.style.display = "none";
+    poiError.innerHTML = "";
+    presaleHint.textContent = "";
+    presaleError.style.display = "none";
+    presaleError.innerHTML = "";
+
+    try {
+      const txnData = await fetchTxnsByAddress(addr, currentRadius);
+      lastTxnData = txnData;
+
+      renderSummary(txnData);
+      renderCenterAndRadius(txnData);
+      renderTxnsWithPoints(txnData);
+      await Promise.all([
+        renderPOI(txnData),
+        renderPresale(txnData)
+      ]);
+
+      setStatus("完成");
+    } catch (e) {
+      console.error(e);
+      setStatus("查詢失敗");
+      const msg = e?.message || "未知錯誤";
+      document.getElementById("summaryBox").innerHTML = `<div class="muted">查詢失敗：${msg}<br/>目前前端預設會打 <code>${API_BASE || window.location.origin}</code>。</div>`;
+      document.getElementById("txnList").innerHTML = "";
+      document.getElementById("poiList").innerHTML = "";
+      document.getElementById("presaleList").innerHTML = "";
+
+      draggedCenter = prevDraggedCenter;
+      lastTxnData = prevTxnData;
+
+      if (prevTxnData) {
+        renderCenterAndRadius(prevTxnData);
+      } else {
+        renderCenterAndRadius();
+        renderExploreSummary(prevDraggedCenter || DEFAULT_CENTER);
+      }
+    }
+  }
+
+  async function runPermitSearch() {
+    const permitNo = permitNoInput.value.trim();
+    const rawAddress = permitAddrInput.value.trim();
+    const address = buildPermitAddressPrefix(rawAddress);
+    const district = permitDistrictSelect.value || districtSelect.value || "";
+    if (!permitNo && !rawAddress) {
+      alert("請輸入執照號碼或地址");
+      return;
+    }
+
+    permitError.style.display = "none";
+    permitError.innerHTML = "";
+    permitHint.textContent = "使用執照查詢中…";
+    setStatus("使用執照查詢中…");
+
+    try {
+      let data;
+      let mode = "filter";
+
+      if (address) {
+        mode = "address";
+        syncPermitDistrictFromAddress(address);
+        const raw = await fetchPermitNearbyByAddress(address);
+        data = normalizePermitSearchResult(raw);
+        if (data.center?.lat != null && data.center?.lon != null) {
+          draggedCenter = { lat: Number(data.center.lat), lon: Number(data.center.lon) };
+          lastTxnData = null;
+          map.setView([draggedCenter.lat, draggedCenter.lon], 16);
+          renderCenterAndRadius();
+          await Promise.all([
+            renderPOIByCenter(draggedCenter),
+            renderPresaleByCenter(draggedCenter)
+          ]);
+        }
+      } else {
+        const raw = await fetchPermitSearch({ district, address, permitNo, limit: 20 });
+        data = normalizePermitSearchResult(raw);
+      }
+
+      const items = data.items || [];
+      permitHint.textContent = `${items.length} 筆`;
+      renderPermitSearchSummary({
+        ...data,
+        mode,
+        district: data.district || district,
+        address,
+        permit_no: permitNo,
+      }, items);
+      renderPermitSearchResults(items);
+      if (items.length === 1) {
+        await loadPermitCandidates(items[0]);
+      } else {
+        clearPermitCandidates();
+      }
+      setStatus("完成");
+    } catch (e) {
+      console.error(e);
+      permitHint.textContent = "使用執照查詢失敗";
+      permitError.style.display = "block";
+      permitError.innerHTML = `<b>使用執照查詢失敗</b><br/>錯誤：<code>${String(e)}</code>`;
+      document.getElementById("permitResultList").innerHTML = "";
+      clearPermitCandidates();
+      setStatus("查詢失敗");
+    }
+  }
+
+  function clearPermitSearch() {
+    permitNoInput.value = "";
+    permitCitySelect.value = "台南市";
+    permitDistrictSelect.value = "";
+    permitAddrInput.value = "";
+    permitHint.textContent = "";
+    permitError.style.display = "none";
+    permitError.innerHTML = "";
+    document.getElementById("permitResultList").innerHTML = "";
+    clearPermitCandidates();
+    if (lastTxnData) {
+      renderSummary(lastTxnData);
+    } else {
+      renderExploreSummary(draggedCenter || DEFAULT_CENTER);
+    }
+  }
+
+  document.getElementById("btnSearch").addEventListener("click", runSearch);
+  addrInput.addEventListener("input", () => syncAddressInputs("main"));
+  document.getElementById("addrInput").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") runSearch();
+  });
+  btnPermitSearch.addEventListener("click", runPermitSearch);
+  btnPermitClear.addEventListener("click", clearPermitSearch);
+  permitNoInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") runPermitSearch();
+  });
+  permitAddrInput.addEventListener("input", () => syncAddressInputs("permit"));
+  permitAddrInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") runPermitSearch();
+  });
+
+  document.querySelectorAll("[data-radius]").forEach(el => {
+    el.addEventListener("click", () => {
+      document.querySelectorAll("[data-radius]").forEach(x => x.classList.remove("active"));
+      el.classList.add("active");
+      currentRadius = Number(el.getAttribute("data-radius"));
+
+      if (lastTxnData) {
+        renderCenterAndRadius(lastTxnData);
+        Promise.all([
+          renderPOI(lastTxnData),
+          renderPresale(lastTxnData)
+        ]);
+      } else {
+        renderCenterAndRadius();
+        renderExploreSummary(draggedCenter || DEFAULT_CENTER);
+        Promise.all([
+          renderPOIByCenter(draggedCenter || DEFAULT_CENTER),
+          renderPresaleByCenter(draggedCenter || DEFAULT_CENTER)
+        ]);
+      }
+    });
+  });
+
+  poiTypeSelect.addEventListener("change", async (e) => {
+    currentPoiType = e.target.value || "all";
+    if (lastTxnData) {
+      await renderPOI(lastTxnData);
+    } else {
+      await renderPOIByCenter(draggedCenter || DEFAULT_CENTER);
+    }
+  });
+
+  async function loadPresaleProjectsByDistrict() {
+    const district = presaleDistrictSelect.value || "";
+    const data = await fetchPresaleOptions(district);
+    const projects = data.projects || [];
+    presaleProjectSelect.innerHTML = `<option value="">全部建案</option>`;
+    projects.forEach((name) => {
+      const opt = document.createElement("option");
+      opt.value = name;
+      opt.textContent = name;
+      presaleProjectSelect.appendChild(opt);
+    });
+  }
+
+  async function initPresaleFilters() {
+    const data = await fetchPresaleOptions("");
+    presaleDistrictSelect.innerHTML = `<option value="">全部區域</option>`;
+    (data.districts || []).forEach((district) => {
+      const opt = document.createElement("option");
+      opt.value = district;
+      opt.textContent = district;
+      presaleDistrictSelect.appendChild(opt);
+    });
+    await loadPresaleProjectsByDistrict();
+  }
+
+  async function runPresaleSearch() {
+    const district = presaleDistrictSelect.value || "";
+    const projectName = presaleProjectSelect.value || "";
+    presaleError.style.display = "none";
+    presaleError.innerHTML = "";
+    presaleHint.textContent = "預售屋查詢中…";
+    setStatus("預售屋查詢中…");
+    try {
+      const data = await fetchPresaleSearch(district, projectName, 100);
+      const items = data.items || [];
+      presaleHint.textContent = `${items.length} 筆`;
+
+      const firstWithPoint = items.find((p) => !Number.isNaN(Number(p.lat)) && !Number.isNaN(Number(p.lon)));
+      const shouldSnapCenter = !!projectName && !!firstWithPoint;
+
+      if (shouldSnapCenter) {
+        draggedCenter = { lat: Number(firstWithPoint.lat), lon: Number(firstWithPoint.lon) };
+        lastTxnData = null;
+        currentPoiType = "all";
+        poiTypeSelect.value = "all";
+        renderCenterAndRadius();
+        renderExploreSummary(draggedCenter);
+        await renderPOIByCenter(draggedCenter);
+        renderPresaleItems(items, { fitBounds: false });
+      } else {
+        renderPresaleItems(items, { fitBounds: true });
+      }
+
+      setStatus("完成");
+    } catch (e) {
+      console.error(e);
+      presaleHint.textContent = "預售屋查詢失敗";
+      presaleError.style.display = "block";
+      presaleError.innerHTML = `<b>預售屋查詢失敗</b><br/>錯誤：<code>${String(e)}</code>`;
+      setStatus("查詢失敗");
+    }
+  }
+
+  presaleDistrictSelect.addEventListener("change", async () => {
+    await loadPresaleProjectsByDistrict();
+  });
+
+  btnPresaleSearch.addEventListener("click", runPresaleSearch);
+
+  (async function autoQueryFromURL() {
+    await initPresaleFilters();
+    const params = new URLSearchParams(window.location.search);
+    const addr = params.get("address");
+    if (addr) {
+      syncDistrictFromAddress(addr);
+      document.getElementById("addrInput").value = addr;
+      runSearch();
+      return;
+    }
+    renderCenterAndRadius();
+    renderExploreSummary(DEFAULT_CENTER);
+    Promise.all([
+      renderPOIByCenter(DEFAULT_CENTER),
+      renderPresaleByCenter(DEFAULT_CENTER)
+    ]);
+  })();
+</script>
+</body>
+</html>
+
+
+
+
+
+

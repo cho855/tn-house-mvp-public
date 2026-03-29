@@ -1,0 +1,1172 @@
+﻿<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+
+<title>使用執照查詢</title>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<style>
+:root{
+  --bg:#f3f5f9;
+  --panel:#ffffff;
+  --panel-soft:#f8fafc;
+  --border:#e5e7eb;
+  --text:#111827;
+  --muted:#6b7280;
+  --primary:#2563eb;
+  --primary-dark:#1d4ed8;
+  --primary-soft:#eff6ff;
+  --green:#16a34a;
+  --amber:#f59e0b;
+  --violet:#7c3aed;
+  --shadow-sm:0 1px 2px rgba(0,0,0,.04);
+  --shadow-md:0 6px 18px rgba(15,23,42,.08);
+  --radius:16px;
+}
+
+*{ box-sizing:border-box; }
+
+html,body{
+  margin:0;
+  padding:0;
+  background:var(--bg);
+  color:var(--text);
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+body{
+  min-height:100vh;
+}
+
+.wrap{
+  display:grid;
+  grid-template-columns:460px 1fr;
+  min-height:100vh;
+}
+
+.panel{
+  background:linear-gradient(180deg,#ffffff 0%, #fbfcfe 100%);
+  border-right:1px solid var(--border);
+  padding:20px;
+  overflow:auto;
+}
+
+.brand-block{
+  margin-bottom:18px;
+}
+
+.eyebrow{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:6px 10px;
+  border-radius:999px;
+  background:var(--primary-soft);
+  color:#1e40af;
+  font-size:12px;
+  font-weight:700;
+  letter-spacing:.02em;
+  margin-bottom:12px;
+}
+
+h1{
+  margin:0 0 8px;
+  font-size:28px;
+  line-height:1.2;
+  letter-spacing:.01em;
+}
+
+.desc{
+  font-size:13px;
+  color:var(--muted);
+  line-height:1.8;
+  margin:0;
+}
+
+.search-card,
+.summary-card,
+.addr-summary-card,
+.permit{
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  background:var(--panel);
+  box-shadow:var(--shadow-sm);
+}
+
+.search-card{
+  padding:16px;
+  margin:18px 0 16px;
+}
+
+.form-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:12px;
+}
+
+.field{
+  display:flex;
+  flex-direction:column;
+  gap:7px;
+}
+
+.field.full{
+  grid-column:1 / -1;
+}
+
+.label-text{
+  font-size:12px;
+  color:var(--muted);
+  font-weight:600;
+  letter-spacing:.01em;
+}
+
+input, select{
+  width:100%;
+  padding:12px 14px;
+  border:1px solid #d1d5db;
+  border-radius:12px;
+  font-size:14px;
+  background:#fff;
+  color:var(--text);
+  outline:none;
+  transition:.18s ease;
+}
+
+input:focus, select:focus{
+  border-color:var(--primary);
+  box-shadow:0 0 0 4px rgba(37,99,235,.10);
+}
+
+.action-row{
+  display:flex;
+  gap:10px;
+  margin-top:14px;
+}
+
+button{
+  border:none;
+  border-radius:12px;
+  padding:11px 16px;
+  font-size:14px;
+  font-weight:700;
+  cursor:pointer;
+  transition:.18s ease;
+}
+
+button.primary{
+  background:linear-gradient(135deg,var(--primary) 0%, #3b82f6 100%);
+  color:#fff;
+  box-shadow:0 8px 18px rgba(37,99,235,.18);
+}
+
+button.primary:hover{
+  background:linear-gradient(135deg,var(--primary-dark) 0%, #2563eb 100%);
+  transform:translateY(-1px);
+}
+
+button.secondary{
+  background:#eef2f7;
+  color:#111827;
+}
+
+button.secondary:hover{
+  background:#e5e7eb;
+}
+
+.section-gap{
+  margin-top:14px;
+}
+
+.result{
+  margin-top:10px;
+  font-size:14px;
+}
+
+.summary-card{
+  padding:14px 16px;
+  background:linear-gradient(180deg,#ffffff 0%, #f9fbff 100%);
+  margin-bottom:14px;
+}
+
+.summary-top{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  margin-bottom:8px;
+}
+
+.summary-title{
+  font-size:15px;
+  font-weight:800;
+}
+
+.badge{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-width:28px;
+  height:28px;
+  padding:0 10px;
+  border-radius:999px;
+  background:#eef2ff;
+  color:#3730a3;
+  font-size:12px;
+  font-weight:800;
+}
+
+.summary-lines{
+  display:grid;
+  gap:5px;
+  color:#374151;
+  font-size:13px;
+}
+
+.muted{
+  color:var(--muted);
+}
+
+.addr-summary-card{
+  padding:16px;
+  margin-bottom:14px;
+  background:
+    radial-gradient(circle at top right, rgba(37,99,235,.08), transparent 32%),
+    linear-gradient(180deg,#ffffff 0%, #f8fbff 100%);
+  border-color:#dbeafe;
+  box-shadow:var(--shadow-md);
+}
+
+.addr-summary-title{
+  font-size:13px;
+  font-weight:800;
+  color:#1d4ed8;
+  letter-spacing:.02em;
+  margin-bottom:8px;
+}
+
+.addr-summary-main{
+  font-size:22px;
+  line-height:1.45;
+  font-weight:800;
+  margin-bottom:10px;
+}
+
+.addr-summary-meta{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px 12px;
+  margin-bottom:12px;
+  font-size:13px;
+  color:#374151;
+}
+
+.metric-pill{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  padding:6px 10px;
+  border-radius:999px;
+  background:#fff;
+  border:1px solid #e5e7eb;
+}
+
+.addr-summary-list-wrap{
+  background:#fff;
+  border:1px solid #e5e7eb;
+  border-radius:14px;
+  padding:12px 14px;
+}
+
+.addr-summary-list-title{
+  font-size:12px;
+  color:var(--muted);
+  font-weight:700;
+  margin-bottom:8px;
+}
+
+.addr-summary-list{
+  margin:0;
+  padding-left:18px;
+}
+
+.addr-summary-list li{
+  margin-bottom:8px;
+  line-height:1.6;
+}
+
+.permit{
+  padding:15px 16px;
+  margin-bottom:12px;
+  transition:.18s ease;
+}
+
+.permit:hover{
+  border-color:#c7d2fe;
+  box-shadow:var(--shadow-md);
+  transform:translateY(-1px);
+}
+
+.permit.active{
+  border-color:var(--primary);
+  background:linear-gradient(180deg,#ffffff 0%, #f7fbff 100%);
+  box-shadow:0 0 0 4px rgba(37,99,235,.10), var(--shadow-md);
+}
+
+.permit-main{
+  font-size:17px;
+  font-weight:800;
+  line-height:1.5;
+  margin-bottom:12px;
+}
+
+.permit-grid{
+  display:grid;
+  grid-template-columns:78px 1fr;
+  row-gap:8px;
+  column-gap:10px;
+  font-size:14px;
+  line-height:1.65;
+}
+
+.label{
+  color:var(--muted);
+  font-size:12px;
+  font-weight:700;
+}
+
+.action-hint{
+  display:inline-block;
+  padding:4px 9px;
+  border-radius:999px;
+  background:#eff6ff;
+  color:#1d4ed8;
+  font-size:12px;
+  font-weight:700;
+}
+
+.map-shell{
+  position:relative;
+  background:#eef2f7;
+}
+
+.topbar{
+  height:48px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:0 18px;
+  background:rgba(255,255,255,.92);
+  backdrop-filter:blur(8px);
+  border-bottom:1px solid var(--border);
+  font-size:13px;
+  color:#374151;
+}
+
+.topbar strong{
+  font-size:14px;
+  color:#111827;
+}
+
+#map{
+  height:calc(100vh - 48px);
+  width:100%;
+}
+
+.map-legend{
+  position:absolute;
+  top:64px;
+  right:16px;
+  z-index:1000;
+  background:rgba(255,255,255,.96);
+  border:1px solid var(--border);
+  border-radius:16px;
+  padding:12px 14px;
+  font-size:12px;
+  color:#374151;
+  box-shadow:var(--shadow-md);
+  line-height:1.8;
+  min-width:160px;
+}
+
+.map-legend-title{
+  font-size:12px;
+  font-weight:800;
+  color:#111827;
+  margin-bottom:6px;
+}
+
+.map-legend-row{
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+
+.map-legend-dot{
+  width:10px;
+  height:10px;
+  border-radius:999px;
+  display:inline-block;
+}
+
+.custom-pin{
+  width:22px;
+  height:22px;
+  border-radius:999px;
+  border:3px solid #fff;
+  box-shadow:0 2px 8px rgba(0,0,0,.25);
+}
+
+.custom-pin.query-center{
+  background:var(--green);
+}
+
+.custom-pin.permit-center{
+  background:var(--primary);
+}
+
+.custom-pin.address-top1{
+  background:var(--amber);
+  width:25px;
+  height:25px;
+  border-width:3px;
+  box-shadow:0 4px 12px rgba(0,0,0,.28);
+}
+
+.custom-pin.address-candidate{
+  background:var(--violet);
+}
+
+@media (max-width: 1100px){
+  .wrap{
+    grid-template-columns:420px 1fr;
+  }
+}
+
+@media (max-width: 960px){
+  .wrap{
+    grid-template-columns:1fr;
+    grid-template-rows:auto 56vh;
+    min-height:100vh;
+  }
+
+  .panel{
+    border-right:none;
+    border-bottom:1px solid var(--border);
+  }
+
+  .form-grid{
+    grid-template-columns:1fr;
+  }
+
+  #map{
+    height:56vh;
+  }
+
+  .map-legend{
+    top:58px;
+    right:10px;
+    padding:10px 12px;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<div class="wrap">
+
+  <div class="panel">
+
+    <div class="brand-block">      
+      <h1>使用執照查詢</h1>
+      <p class="desc">
+        可依 <b>地址</b>、<b>區域</b>、<b>使用執照號碼</b> 查詢。<br>
+        輸入地址時，系統會先找地址中心，再顯示附近使用執照；點選使用執照後，可查看推估門牌與地圖候選點。
+      </p>
+    </div>
+
+    <div class="search-card">
+      <div class="form-grid">
+        <div class="field">
+          <div class="label-text">縣市</div>
+          <select id="citySelect">
+            <option value="台南市" selected>台南市</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <div class="label-text">區域</div>
+          <select id="districtSelect">
+            <option value="">全部區域</option>
+          </select>
+        </div>
+
+        <div class="field full">
+          <div class="label-text">地址(請輸入例如台南市政府地址：永華路二段6號)</div>
+          <input
+            id="addrInput"
+            placeholder=""
+          />
+        </div>
+
+        <div class="field full">
+          <div class="label-text">使用執照號碼(請輸入例如：(111)南工使字第00176號)</div>
+          <input
+            id="permitNoInput"
+            placeholder=""
+          />
+        </div>
+      </div>
+
+      <div class="action-row">
+        <button id="btnSearch" class="primary">查詢</button>
+        <button id="btnReset" class="secondary">清除條件</button>
+      </div>
+    </div>
+
+    <div class="result" id="summary"></div>
+    <div id="permitAddressSummaryBox"></div>
+    <div id="permitList"></div>
+
+  </div>
+
+  <div class="map-shell">
+    <div class="topbar">
+      <strong>地圖視覺化</strong>
+      <span class="muted">查詢地址、使用執照與推估門牌候選</span>
+    </div>
+
+    <div class="map-legend">
+      <div class="map-legend-title">地圖圖例</div>
+      <div class="map-legend-row">
+        <span class="map-legend-dot" style="background:#16a34a;"></span>
+        <span>查詢地址</span>
+      </div>
+      <div class="map-legend-row">
+        <span class="map-legend-dot" style="background:#2563eb;"></span>
+        <span>使用執照位置</span>
+      </div>
+      <div class="map-legend-row">
+        <span class="map-legend-dot" style="background:#f59e0b;"></span>
+        <span>Top1 推估門牌</span>
+      </div>
+      <div class="map-legend-row">
+        <span class="map-legend-dot" style="background:#7c3aed;"></span>
+        <span>其他候選門牌</span>
+      </div>
+    </div>
+
+    <div id="map"></div>
+  </div>
+
+</div>
+
+<script src="./api-client.js"></script>
+<script>
+const { API_BASE, fetchJson } = window.TNHouseApi;
+
+const TAINAN_DISTRICTS = [
+  "中西區","東區","南區","北區","安平區","安南區","永康區","歸仁區","新化區","左鎮區",
+  "玉井區","楠西區","南化區","仁德區","關廟區","龍崎區","官田區","麻豆區","佳里區","西港區",
+  "七股區","將軍區","學甲區","北門區","新營區","後壁區","白河區","東山區","六甲區","下營區",
+  "柳營區","鹽水區","善化區","大內區","山上區","新市區","安定區"
+];
+
+let map = L.map("map").setView([23.0, 120.2], 13);
+
+L.tileLayer(
+  "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+  {
+    maxZoom: 19,
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+  }
+).addTo(map);
+
+let markers = [];
+let permitSummaryMarkerLayer = null;
+let activePermitCard = null;
+
+function makeDivIcon(className){
+  return L.divIcon({
+    className: "",
+    html: `<div class="custom-pin ${className}"></div>`,
+    iconSize: [22, 22],
+    iconAnchor: [11, 11],
+    popupAnchor: [0, -10]
+  });
+}
+
+function initDistrictOptions(){
+  const districtSelect = document.getElementById("districtSelect");
+  if (!districtSelect) return;
+
+  districtSelect.innerHTML = `<option value="">全部區域</option>`;
+
+  TAINAN_DISTRICTS.forEach(d => {
+    const opt = document.createElement("option");
+    opt.value = d;
+    opt.textContent = d;
+    districtSelect.appendChild(opt);
+  });
+}
+
+function clearMarkers(){
+  markers.forEach(m => {
+    try { map.removeLayer(m); } catch(e) {}
+  });
+  markers = [];
+}
+
+function clearPermitSummaryMarkers(){
+  if (permitSummaryMarkerLayer) {
+    try { map.removeLayer(permitSummaryMarkerLayer); } catch(e) {}
+  }
+  permitSummaryMarkerLayer = null;
+}
+
+function clearAddressSummaryBox(){
+  const box = document.getElementById("permitAddressSummaryBox");
+  if (box) box.innerHTML = "";
+}
+
+function clearActivePermitCard(){
+  if (activePermitCard) activePermitCard.classList.remove("active");
+  activePermitCard = null;
+}
+
+function escapeHtml(str){
+  if (str === null || str === undefined) return "";
+  return String(str)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function getDistrictFromAddress(addr){
+  if (!addr) return "";
+  const found = TAINAN_DISTRICTS.find(d => String(addr).includes(d));
+  return found || "";
+}
+
+function normalizePermitSearchResult(data){
+  if (!data) return { items: [] };
+
+  if (Array.isArray(data.items)) {
+    return {
+      query_address: data.query_address || "",
+      city: data.city || "",
+      district: data.district || "",
+      permit_no: data.permit_no || "",
+      center: data.center || data["center                   "] || null,
+      items: data.items
+    };
+  }
+
+  if (Array.isArray(data)) {
+    return {
+      query_address: "",
+      city: "",
+      district: "",
+      permit_no: "",
+      center: null,
+      items: data
+    };
+  }
+
+  // 有些 API 可能回單筆物件
+  if (data && typeof data === "object") {
+    const possibleItems =
+      data.results ||
+      data.data ||
+      data.records ||
+      [];
+
+    if (Array.isArray(possibleItems)) {
+      return {
+        query_address: data.query_address || "",
+        city: data.city || "",
+        district: data.district || "",
+        permit_no: data.permit_no || "",
+        center: data.center || data["center                   "] || null,
+        items: possibleItems
+      };
+    }
+  }
+
+  return { items: [] };
+}
+
+async function loadPermitAddressSummaryCard(permitNo){
+  const box = document.getElementById("permitAddressSummaryBox");
+  if (!box) return;
+
+  box.innerHTML = `
+    <div class="addr-summary-card">
+      <div class="addr-summary-title">門牌推估中...</div>
+    </div>
+  `;
+
+  try{
+    const url = `${API_BASE}/permit_address_summary?permit_no=${encodeURIComponent(permitNo)}`;
+    const data = await fetchJson(url);
+
+    box.innerHTML = `
+      <div class="addr-summary-card">
+        <div class="addr-summary-title">推估主要地址</div>
+        <div class="addr-summary-main">${escapeHtml(data.best_address || "-")}</div>
+
+        <div class="addr-summary-meta">
+          <span class="metric-pill">命中次數：${escapeHtml(String(data.best_hit_count ?? "-"))}</span>
+          <span class="metric-pill">最高分數：${escapeHtml(String(data.best_max_score ?? "-"))}</span>
+        </div>
+
+        <div class="addr-summary-list-wrap">
+          <div class="addr-summary-list-title">Top 3 候選</div>
+          <ol class="addr-summary-list">
+            ${(data.top_addresses || []).map(item => `
+              <li>
+                ${escapeHtml(item.addr_display || "-")}
+                <span class="muted">（命中 ${escapeHtml(String(item.hit_count ?? "-"))} / 分數 ${escapeHtml(String(item.max_score ?? "-"))}）</span>
+              </li>
+            `).join("")}
+          </ol>
+        </div>
+      </div>
+    `;
+  }catch(err){
+    console.error("loadPermitAddressSummaryCard failed:", err);
+    box.innerHTML = `
+      <div class="addr-summary-card">
+        <div class="addr-summary-title">推估地址</div>
+        <div class="muted">此使用執照目前沒有可顯示的門牌摘要。</div>
+      </div>
+    `;
+  }
+}
+
+async function loadPermitAddressSummaryMap(map, permitNo){
+  try{
+    const url = `${API_BASE}/permit_address_candidates_map_summary?permit_no=${encodeURIComponent(permitNo)}&limit=10`;
+    const data = await fetchJson(url);
+
+    clearPermitSummaryMarkers();
+    permitSummaryMarkerLayer = L.layerGroup().addTo(map);
+
+    const bounds = [];
+
+    (data.items || []).forEach((item, idx) => {
+      const latlng = [item.lat, item.lon];
+      bounds.push(latlng);
+
+      const icon = idx === 0
+        ? makeDivIcon("address-top1")
+        : makeDivIcon("address-candidate");
+
+      const marker = L.marker(latlng, { icon }).addTo(permitSummaryMarkerLayer);
+
+      marker.bindPopup(`
+        <div style="min-width:240px;">
+          <div style="font-weight:700; margin-bottom:6px;">
+            ${idx === 0 ? "Top1 候選門牌" : `Top${idx + 1} 候選門牌`}
+          </div>
+          <div>地址：${escapeHtml(item.addr_display || "-")}</div>
+          <div>命中次數：${escapeHtml(String(item.hit_count ?? "-"))}</div>
+          <div>最近距離：${item.min_distance_m != null ? escapeHtml(item.min_distance_m.toFixed(2)) + " m" : "-"}</div>
+          <div>平均距離：${item.avg_distance_m != null ? escapeHtml(item.avg_distance_m.toFixed(2)) + " m" : "-"}</div>
+          <div>最高分數：${escapeHtml(String(item.max_score ?? "-"))}</div>
+          <div>信心：${escapeHtml(item.confidence_level || "-")}</div>
+          <div>來源：${escapeHtml(item.source_rule || "-")}</div>
+        </div>
+      `);
+
+      if (idx === 0){
+        marker.bindTooltip(
+          `${item.addr_display}（Top1）`,
+          { permanent:true, direction:"top", offset:[0, -12] }
+        );
+      }
+    });
+
+    if (bounds.length > 0){
+      map.fitBounds(bounds, { padding: [30, 30] });
+    }
+  }catch(err){
+    console.error("loadPermitAddressSummaryMap failed:", err);
+    clearPermitSummaryMarkers();
+  }
+}
+
+async function onPermitSelect(p, el){
+  clearActivePermitCard();
+  if (el){
+    el.classList.add("active");
+    activePermitCard = el;
+  }
+
+  const permitNo = p.permit_no || "";
+  if (!permitNo) return;
+
+  await Promise.all([
+    loadPermitAddressSummaryCard(permitNo),
+    loadPermitAddressSummaryMap(map, permitNo)
+  ]);
+
+  if (p.lat && p.lon){
+    map.setView([p.lat, p.lon], 17);
+  }
+}
+
+
+function renderResult(data, meta = {}){
+  const summary = document.getElementById("summary");
+  const list = document.getElementById("permitList");
+
+  clearMarkers();
+  clearPermitSummaryMarkers();
+  clearAddressSummaryBox();
+  clearActivePermitCard();
+
+  list.innerHTML = "";
+
+  const items = Array.isArray(data.items) ? data.items : [];
+
+  if (!items.length){
+    summary.innerHTML = `
+      <div class="summary-card">
+        <div class="summary-title">查無結果</div>
+        <div class="muted">請調整地址、區域或使用執照號碼後再試一次。</div>
+      </div>
+    `;
+    return;
+  }
+
+  const modeText = meta.mode === "address" ? "地址附近查詢" : "條件查詢";
+
+  const queryParts = [];
+  queryParts.push(`查詢模式：${escapeHtml(modeText)}`);
+  if (meta.city) queryParts.push(`縣市：${escapeHtml(meta.city)}`);
+  if (meta.district) queryParts.push(`區域：${escapeHtml(meta.district)}`);
+  if (meta.address) queryParts.push(`地址：${escapeHtml(meta.address)}`);
+  if (meta.permitNo) queryParts.push(`使用執照號碼：${escapeHtml(meta.permitNo)}`);
+
+  summary.innerHTML = `
+    <div class="summary-card">
+      <div class="summary-top">
+        <div class="summary-title">查詢結果</div>
+        <span class="badge">${items.length} 筆</span>
+      </div>
+      <div class="summary-lines">
+        ${queryParts.map(t => `<div>${t}</div>`).join("")}
+        ${data.center && data.center.match_level ? `<div>match level：${escapeHtml(data.center.match_level)}</div>` : ""}
+        <div class="muted" style="margin-top:4px;">點擊下方任一使用執照，可查看該筆的推估門牌與候選點位。</div>
+      </div>
+    </div>
+  `;
+
+  let center = null;
+  let hasAnyMarker = false;
+
+  if (data.center && data.center.lat && data.center.lon){
+    center = [data.center.lat, data.center.lon];
+    const centerMarker = L.marker(center, {
+      icon: makeDivIcon("query-center")
+    }).addTo(map);
+
+    centerMarker.bindPopup(`
+      <div>
+        <b>查詢地址</b><br>
+        ${meta.address ? escapeHtml(meta.address) : "查詢中心"}
+      </div>
+    `);
+
+    markers.push(centerMarker);
+    hasAnyMarker = true;
+  }
+
+  items.forEach((p, idx) => {
+    const permitNo = p.permit_no || "-";
+    const addr = p.address_raw || p.address || "-";
+    const district = p.district || meta.district || getDistrictFromAddress(addr) || "-";
+    const city = p.city || meta.city || "台南市";
+
+    const issueDate = p.issue_date || "-";
+    const startDate = p.start_date || "-";
+    const useKind = p.use_kind || p.usage || "-";
+    const floorCount = p.floor_count || "-";
+    const householdCount = p.household_count ?? p.units ?? "-";
+    const heightM = p.height_m ?? "-";
+    const geoSource = p.geo_source || "-";
+
+    const el = document.createElement("div");
+    el.className = "permit";
+    el.innerHTML = `
+      <div class="permit-main">${escapeHtml(permitNo)}</div>
+      <div class="permit-grid">
+        <div class="label">縣市</div>
+        <div>${escapeHtml(city)}</div>
+
+        <div class="label">區域</div>
+        <div>${escapeHtml(district)}</div>
+
+        <div class="label">地址</div>
+        <div>${escapeHtml(addr)}</div>
+
+        <div class="label">用途</div>
+        <div>${escapeHtml(String(useKind))}</div>
+
+        <div class="label">樓層</div>
+        <div>${escapeHtml(String(floorCount))}</div>
+
+        <div class="label">戶數</div>
+        <div>${escapeHtml(String(householdCount))}</div>
+
+        <div class="label">高度(m)</div>
+        <div>${escapeHtml(String(heightM))}</div>
+
+        <div class="label">發照日</div>
+        <div>${escapeHtml(issueDate)}</div>
+
+        <div class="label">開工日</div>
+        <div>${escapeHtml(startDate)}</div>
+
+        <div class="label">操作</div>
+        <div><span class="action-hint">查看推估門牌</span></div>
+      </div>
+    `;
+    list.appendChild(el);
+
+    if (p.lat && p.lon){
+      const pos = [p.lat, p.lon];
+      const m = L.marker(pos, {
+        icon: makeDivIcon("permit-center")
+      }).addTo(map);
+
+      m.bindPopup(`
+        <div style="min-width:220px;">
+          <div style="font-weight:700; margin-bottom:6px;">${escapeHtml(permitNo)}</div>
+          <div>地號：${escapeHtml(addr)}</div>
+          <div>用途：${escapeHtml(String(useKind))}</div>
+          <div>樓層：${escapeHtml(String(floorCount))}</div>
+          <div>戶數：${escapeHtml(String(householdCount))}</div>
+          <div>定位來源：${escapeHtml(geoSource)}</div>
+        </div>
+      `);
+
+      markers.push(m);
+      hasAnyMarker = true;
+
+      if (!center && idx === 0){
+        center = pos;
+      }
+    }
+
+    el.style.cursor = "pointer";
+    el.addEventListener("click", () => {
+      onPermitSelect(p, el);
+    });
+  });
+
+  if (center){
+    map.setView(center, data.center ? 16 : 15);
+  } else if (!hasAnyMarker) {
+    map.setView([23.0, 120.2], 13);
+  }
+
+  if (items.length > 0){
+    const firstCard = list.querySelector(".permit");
+    if (firstCard){
+      onPermitSelect(items[0], firstCard);
+    }
+  }
+}
+
+async function searchPermits(){
+  const city = document.getElementById("citySelect").value.trim();
+  const district = document.getElementById("districtSelect").value.trim();
+  const addr = document.getElementById("addrInput").value.trim();
+  const permitNo = document.getElementById("permitNoInput").value.trim();
+
+  if (!addr && !district && !permitNo){
+    alert("請至少輸入地址、區域或使用執照號碼其中一項");
+    return;
+  }
+
+  document.getElementById("summary").innerHTML = `
+    <div class="summary-card">
+      <div class="summary-title">查詢中...</div>
+    </div>
+  `;
+  document.getElementById("permitAddressSummaryBox").innerHTML = "";
+  document.getElementById("permitList").innerHTML = "";
+  clearMarkers();
+  clearPermitSummaryMarkers();
+  clearActivePermitCard();
+
+  try{
+    let data;
+    let mode;
+
+    if (addr){
+      mode = "address";
+
+      const params = new URLSearchParams();
+      params.set("address", addr);
+
+      const url = `${API_BASE}/nearby_by_address?${params.toString()}`;
+      const raw = await fetchJson(url);
+      console.log("nearby raw =", raw);
+
+      data = normalizePermitSearchResult(raw);
+      console.log("nearby normalized =", data);
+
+      renderResult(data, {
+        mode,
+        city,
+        district,
+        address: addr,
+        permitNo
+      });
+      return;
+    }
+
+    mode = "filter";
+
+    const params = new URLSearchParams();
+    if (city) params.set("city", city);
+    if (district) params.set("district", district);
+    if (permitNo) params.set("permit_no", permitNo);
+
+    const url = `${API_BASE}/permits/search?${params.toString()}`;
+    const raw = await fetchJson(url);
+    console.log("search raw =", raw);
+
+    data = normalizePermitSearchResult(raw);
+    console.log("search normalized =", data);
+
+    renderResult(data, {
+      mode,
+      city,
+      district,
+      address: addr,
+      permitNo
+    });
+
+
+
+  }catch(e){
+    console.error("searchPermits error:", e);
+    document.getElementById("summary").innerHTML = `
+      <div class="summary-card">
+        <div class="summary-title">查詢失敗</div>
+        <div class="muted">請確認 API 是否已啟動，或稍後再試。</div>
+      </div>
+    `;
+    document.getElementById("permitAddressSummaryBox").innerHTML = "";
+    document.getElementById("permitList").innerHTML = "";
+  }
+}
+
+function resetForm(){
+  const citySelect = document.getElementById("citySelect");
+  const districtSelect = document.getElementById("districtSelect");
+  const addrInput = document.getElementById("addrInput");
+  const permitNoInput = document.getElementById("permitNoInput");
+  const summary = document.getElementById("summary");
+  const permitList = document.getElementById("permitList");
+
+  if (citySelect) citySelect.value = "台南市";
+  if (districtSelect) districtSelect.value = "";
+  if (addrInput) addrInput.value = "";
+  if (permitNoInput) permitNoInput.value = "";
+  if (summary) summary.innerHTML = "";
+  if (permitList) permitList.innerHTML = "";
+
+  clearAddressSummaryBox();
+  clearMarkers();
+  clearPermitSummaryMarkers();
+  clearActivePermitCard();
+
+  map.setView([23.0, 120.2], 13);
+
+  const cleanUrl = `${window.location.pathname}`;
+  window.history.replaceState({}, "", cleanUrl);
+}
+
+function autoQueryFromURL(){
+  const params = new URLSearchParams(window.location.search);
+
+  const city = params.get("city") || "";
+  const district = params.get("district") || "";
+  const addr = params.get("address") || "";
+  const permitNo = params.get("permit_no") || "";
+
+  if (city && document.getElementById("citySelect")) {
+    document.getElementById("citySelect").value = city;
+  }
+
+  if (district && document.getElementById("districtSelect")) {
+    document.getElementById("districtSelect").value = district;
+  }
+
+  if (addr && document.getElementById("addrInput")) {
+    document.getElementById("addrInput").value = addr;
+  }
+
+  if (permitNo && document.getElementById("permitNoInput")) {
+    document.getElementById("permitNoInput").value = permitNo;
+  }
+
+  if (city || district || addr || permitNo){
+    searchPermits();
+  }
+}
+
+function bindEvents(){
+  const btnSearch = document.getElementById("btnSearch");
+  const btnReset = document.getElementById("btnReset");
+  const addrInput = document.getElementById("addrInput");
+  const permitNoInput = document.getElementById("permitNoInput");
+  const districtSelect = document.getElementById("districtSelect");
+  const citySelect = document.getElementById("citySelect");
+
+  if (btnSearch){
+    btnSearch.addEventListener("click", searchPermits);
+  }
+
+  if (btnReset){
+    btnReset.addEventListener("click", resetForm);
+  }
+
+  [addrInput, permitNoInput].forEach(el => {
+    if (!el) return;
+    el.addEventListener("keydown", e => {
+      if (e.key === "Enter"){
+        searchPermits();
+      }
+    });
+  });
+
+  [districtSelect, citySelect].forEach(el => {
+    if (!el) return;
+    el.addEventListener("keydown", e => {
+      if (e.key === "Enter"){
+        searchPermits();
+      }
+    });
+  });
+}
+
+initDistrictOptions();
+bindEvents();
+autoQueryFromURL();
+</script>
+
+</body>
+</html>
