@@ -1,0 +1,3 @@
+﻿id,source_table,source_id,district,project_name,road,address_seed,address_norm,center_source,match_level,lon,lat
+3055,presale_csv,六甲區|風光合2-日光寓|自由街/進化街口|(111)南工造字第00720號,六甲區,風光合2-日光寓,自由街/進化街口,台南市六甲區自由街/進化街口,台南市六甲區自由街進化街口,NONE,NONE,,
+3744,presale_csv,永康區|時代至上|永大二路VS永吉路口|南工造字第03877-01號,永康區,時代至上,永大二路VS永吉路口,台南市永康區永大二路VS永吉路口,台南市永康區永大二路VS永吉路口,NONE,NONE,,

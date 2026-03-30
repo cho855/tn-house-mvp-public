@@ -1,74 +1,22 @@
-# Python
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-.pytest_cache/
-.mypy_cache/
-
-# Virtual env
-.venv/
-venv/
-env/
-
-# Env files
 .env
 .env.*
-!.env.example
-
-# Logs
-*.log
-logs/
-
-# OS / Editor
-.DS_Store
-Thumbs.db
-.vscode/
-.idea/
-
-# Node
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+venv/
+*.sqlite3
+coverage/
+htmlcov/
 node_modules/
-
-# Build / cache
 dist/
 build/
-.coverage
-htmlcov/
+*.Zone.Identifier*
+.DS_Store
+Thumbs.db
+*.save
+*.bak
+*.tmp
 
-# Jupyter
-.ipynb_checkpoints/
-
-# Database / dumps
-*.sqlite
-*.sqlite3
-*.dump
-
-# Large SQL exports
 core_tables.sql
 extra_tables.sql
-use_permits.sql
-
-# Secrets / keys
-*.pem
-*.key
-*.crt
-id_rsa
-id_ed25519
-
-# Temp / debug
-tmp_*
-debug_payload_urls.txt
-debug_payload_sample.json
-
-# Large / private data
-data/address_points.csv
-data/raw/
-data/private/
-data/tmp/
-
-# Exports
-exports/*.csv
-exports/*.txt
-
-# Docker local override
-docker-compose.override.yml

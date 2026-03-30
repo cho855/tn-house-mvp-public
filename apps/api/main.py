@@ -42,6 +42,8 @@ app.add_middleware(
         "http://127.0.0.1:3000",
         "http://localhost:5173",
         "http://127.0.0.1:5173",
+        "https://cindyho.work",
+        "https://www.cindyho.work",
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -258,3 +260,114 @@ def search(
         r["issue_date"] = roc_to_ad(r.get("issue_date"))
 
     return rows
+
+@app.get("/permits/search")
+def permits_search(
+    city: str = Query("台南市"),
+    district: str = Query(""),
+    address: str = Query(""),
+    permit_no: str = Query(""),
+    limit: int = Query(20, ge=1, le=200),
+):
+    district = (district or "").strip()
+    address = (address or "").strip()
+    permit_no = (permit_no or "").strip()
+    city = (city or "台南市").strip() or "台南市"
+    address_norm = normalize_query_address(address) if address else ""
+
+    where = ["1=1"]
+    params = []
+
+    if city:
+        where.append("address_norm ILIKE %s")
+        params.append(f"%{city}%")
+    if district:
+        where.append("address_norm ILIKE %s")
+        params.append(f"%{district}%")
+    if address_norm:
+        where.append("address_norm ILIKE %s")
+        params.append(f"%{address_norm}%")
+    if permit_no:
+        where.append("permit_no ILIKE %s")
+        params.append(f"%{permit_no}%")
+
+    sql = f"""
+      SELECT
+        id,
+        permit_no,
+        building_permit_no,
+        address_raw,
+        address_norm,
+        CASE
+          WHEN address_norm ~ '台南市[^區]{1,6}區' THEN substring(address_norm from '台南市([^區]{1,6}區)')
+          ELSE NULL
+        END AS district,
+        issue_date,
+        start_date,
+        floors_above,
+        floors_below,
+        height_m,
+        usage AS use_kind,
+        units AS household_count,
+        CASE
+          WHEN floors_above IS NOT NULL AND floors_below IS NOT NULL THEN '地上' || floors_above::text || ' / 地下' || floors_below::text
+          WHEN floors_above IS NOT NULL THEN '地上' || floors_above::text
+          WHEN floors_below IS NOT NULL THEN '地下' || floors_below::text
+          ELSE NULL
+        END AS floor_count,
+        ST_Y(geom) AS lat,
+        ST_X(geom) AS lon,
+        CASE
+          WHEN geom IS NOT NULL THEN 'PERMIT_GEOM'
+          ELSE NULL
+        END AS geo_source,
+        source_dataset
+      FROM use_permits
+      WHERE {' AND '.join(where)}
+      ORDER BY issue_date DESC NULLS LAST, id DESC
+      LIMIT %s
+    """
+    params.append(limit)
+
+    with get_conn() as conn:
+        conn.row_factory = dict_row
+        with conn.cursor() as cur:
+            cur.execute(sql, params)
+            rows = cur.fetchall()
+
+    items = []
+    for r in rows:
+        items.append({
+            "id": int(r["id"]),
+            "permit_no": r.get("permit_no"),
+            "building_permit_no": r.get("building_permit_no"),
+            "address_raw": r.get("address_raw"),
+            "address_norm": r.get("address_norm"),
+            "city": city,
+            "district": r.get("district") or district or None,
+            "issue_date": roc_to_ad(r.get("issue_date")),
+            "start_date": roc_to_ad(r.get("start_date")),
+            "use_kind": r.get("use_kind"),
+            "floors_above": r.get("floors_above"),
+            "floors_below": r.get("floors_below"),
+            "height_m": float(r["height_m"]) if r.get("height_m") is not None else None,
+            "household_count": r.get("household_count"),
+            "lat": float(r["lat"]) if r.get("lat") is not None else None,
+            "lon": float(r["lon"]) if r.get("lon") is not None else None,
+            "geo_source": r.get("geo_source"),
+            "source_dataset": r.get("source_dataset"),
+            "completion_date": None,
+            "builder": None,
+            "designer": None,
+            "contractor": None,
+            "floor_count": r.get("floor_count"),
+        })
+
+    return {
+        "city": city,
+        "district": district,
+        "address": address,
+        "permit_no": permit_no,
+        "count": len(items),
+        "items": items,
+    }
