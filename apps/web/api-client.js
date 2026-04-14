@@ -1,5 +1,9 @@
-(function () {
-  const API_BASE = localStorage.getItem("TN_API_BASE") || (window.location.port === "8000" ? "" : "http://127.0.0.1:8000");
+﻿(function () {
+  const storedBase = localStorage.getItem("TN_API_BASE");
+  const isProdHost = window.location.hostname.endsWith("cindyho.work");
+  const API_BASE = storedBase || (isProdHost
+    ? "https://api.cindyho.work"
+    : (window.location.port === "8000" ? "" : "http://127.0.0.1:8000"));
 
   async function fetchJson(url, options) {
     const response = await fetch(url, options);

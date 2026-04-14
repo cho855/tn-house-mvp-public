@@ -1,38 +1,28 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="zh-Hant">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>不動產資訊查詢</title>
-  <meta name="description" content="不動產資訊查詢首頁" />
-
+  <title>cindyho.work | Projects</title>
+  <meta name="description" content="Cindy Ho projects hub" />
   <style>
     :root{
-      --text: rgba(255,255,255,0.96);
-      --text-soft: rgba(255,255,255,0.66);
-      --text-card: rgba(255,255,255,0.74);
-      --line: rgba(255,255,255,0.14);
-      --line-hover: rgba(255,255,255,0.24);
-      --gold: rgba(214,192,150,0.90);
-
-      --card-bg-top: rgba(255,255,255,0.10);
-      --card-bg-bottom: rgba(255,255,255,0.045);
-
-      --shadow: 0 18px 48px rgba(0,0,0,0.16);
-      --shadow-hover: 0 28px 80px rgba(0,0,0,0.24);
-
-      --radius-xl: 32px;
-      --radius-lg: 24px;
+      --text: #0f1b2d;
+      --text-soft: rgba(15,27,45,0.68);
+      --card-bg: rgba(255,255,255,0.86);
+      --card-border: rgba(15,27,45,0.12);
+      --accent: #1d4ed8;
+      --accent-soft: rgba(29,78,216,0.12);
+      --shadow: 0 18px 48px rgba(15,27,45,0.12);
+      --radius-xl: 28px;
+      --radius-lg: 20px;
     }
 
     * { box-sizing: border-box; }
 
-    html, body {
-      margin: 0;
-      min-height: 100%;
-    }
-
     body{
+      margin: 0;
+      min-height: 100vh;
       font-family:
         "Noto Sans TC",
         "PingFang TC",
@@ -45,302 +35,159 @@
         Arial,
         sans-serif;
       color: var(--text);
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      overflow: hidden;
-      position: relative;
-      background: #151a1f;
+      background: #f6f7fb;
     }
 
-    
     body::before{
-      content:"";
+      content: "";
       position: fixed;
       inset: 0;
       background:
-        linear-gradient(rgba(16,20,26,0.22), rgba(16,20,26,0.42)),
-        url("./image/pic2.jpg") center center / cover no-repeat;
-      transform: scale(1.045);
-      filter: brightness(0.93) saturate(0.90);
-      z-index: -4;
-    }
-
-    
-    body::after{
-      content:"";
-      position: fixed;
-      inset: 0;
-      background:
-        radial-gradient(circle at 50% 22%, rgba(255,255,255,0.05), transparent 22%),
-        radial-gradient(circle at 50% 62%, rgba(255,255,255,0.03), transparent 28%),
-        linear-gradient(to bottom, rgba(255,255,255,0.01), rgba(0,0,0,0.10) 42%, rgba(0,0,0,0.24));
-      z-index: -3;
-    }
-
-    a{
-      color: inherit;
-      text-decoration: none;
+        radial-gradient(circle at 12% 20%, rgba(29,78,216,0.08), transparent 40%),
+        radial-gradient(circle at 88% 18%, rgba(15,27,45,0.08), transparent 38%),
+        url("./image/pic1.jpg") center top / cover no-repeat;
+      opacity: 0.12;
+      z-index: -2;
     }
 
     .page{
-      width: min(1280px, calc(100% - 72px));
-      padding: 34px 0 40px;
+      width: min(1180px, calc(100% - 48px));
+      margin: 0 auto;
+      padding: 54px 0 80px;
     }
 
     .hero{
-      text-align: center;
-      margin-bottom: 72px;
-    }
-
-    .hero-mark{
-      display: inline-block;
-      margin-bottom: 18px;
-      font-size: 11px;
-      font-weight: 600;
-      letter-spacing: 0.42em;
-      color: var(--gold);
-      opacity: 0.95;
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 24px;
+      margin-bottom: 32px;
     }
 
     .hero h1{
+      margin: 0 0 12px;
+      font-size: clamp(32px, 3.8vw, 54px);
+      letter-spacing: 0.06em;
+    }
+
+    .hero p{
       margin: 0;
-      font-size: clamp(46px, 5.8vw, 92px);
-      font-weight: 400;
-      letter-spacing: 0.18em;
-      line-height: 1.03;
-      text-shadow:
-        0 10px 24px rgba(0,0,0,0.08),
-        0 2px 6px rgba(0,0,0,0.05);
-    }
-
-    .hero-subtitle{
-      margin-top: 18px;
-      font-size: 13px;
-      font-weight: 400;
-      letter-spacing: 0.22em;
+      font-size: 14px;
       color: var(--text-soft);
+      max-width: 520px;
+      line-height: 1.7;
     }
 
-    .entry-grid{
-      display: flex;
-      justify-content: center;
-      align-items: stretch;
+    .hero .tag{
+      font-size: 12px;
+      letter-spacing: 0.28em;
+      color: rgba(15,27,45,0.54);
+    }
+
+    .grid{
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
       gap: 18px;
-      flex-wrap: wrap;
-      position: relative;
     }
 
-    .entry-card{
-      width: 220px;
-      min-height: 150px;
-      padding: 20px 18px;
+    .card{
       border-radius: var(--radius-xl);
-      border: 1px solid var(--line);
-      background: linear-gradient(
-        180deg,
-        var(--card-bg-top),
-        var(--card-bg-bottom)
-      );
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
       box-shadow: var(--shadow);
-      backdrop-filter: blur(18px);
-      -webkit-backdrop-filter: blur(18px);
-      position: relative;
-      overflow: hidden;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition:
-        transform 0.24s ease,
-        border-color 0.24s ease,
-        background 0.24s ease,
-        box-shadow 0.24s ease;
-      isolation: isolate;
-    }
-
-    .entry-card::before{
-      content: "";
-      position: absolute;
-      inset: 0;
-      background:
-        linear-gradient(
-          145deg,
-          rgba(255,255,255,0.18) 0%,
-          rgba(255,255,255,0.05) 36%,
-          rgba(255,255,255,0.00) 100%
-        );
-      pointer-events: none;
-      z-index: 0;
-    }
-
-    
-    .entry-card::after{
-      content: "";
-      position: absolute;
-      left: 20px;
-      right: 20px;
-      top: 0;
-      height: 1px;
-      background: linear-gradient(
-        90deg,
-        rgba(255,255,255,0),
-        rgba(255,255,255,0.22),
-        rgba(255,255,255,0)
-      );
-      pointer-events: none;
-      z-index: 1;
-    }
-
-    
-    .entry-card .glow{
-      position: absolute;
-      inset: auto;
-      width: 180px;
-      height: 180px;
-      border-radius: 50%;
-      background: radial-gradient(circle, rgba(255,255,255,0.12), transparent 68%);
-      opacity: 0;
-      transition: opacity 0.24s ease, transform 0.24s ease;
-      pointer-events: none;
-      z-index: 0;
-      transform: translateY(18px) scale(0.9);
-    }
-
-    .entry-card:hover{
-      transform: translateY(-8px);
-      border-color: var(--line-hover);
-      background: linear-gradient(
-        180deg,
-        rgba(255,255,255,0.13),
-        rgba(255,255,255,0.06)
-      );
-      box-shadow: var(--shadow-hover);
-    }
-
-    .entry-card:hover .glow{
-      opacity: 1;
-      transform: translateY(0) scale(1);
-    }
-
-    .entry-content{
-      position: relative;
-      z-index: 2;
-      width: 100%;
+      padding: 22px 22px 20px;
       display: flex;
       flex-direction: column;
-      justify-content: center;
+      gap: 14px;
+    }
+
+    .card h3{
+      margin: 0;
+      font-size: 20px;
+    }
+
+    .card p{
+      margin: 0;
+      color: var(--text-soft);
+      line-height: 1.6;
+      font-size: 13px;
+    }
+
+    .links{
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .btn{
+      display: inline-flex;
       align-items: center;
-      text-align: center;
-    }
-
-    .entry-no{
-      font-size: 10px;
-      font-weight: 600;
-      letter-spacing: 0.26em;
-      color: rgba(255,255,255,0.44);
-      margin-bottom: 10px;
-    }
-
-    .entry-title{
-      font-size: clamp(21px, 2vw, 26px);
-      font-weight: 600;
-      line-height: 1.48;
-      letter-spacing: 0.08em;
-      text-shadow: 0 6px 16px rgba(0,0,0,0.08);
-    }
-
-    .entry-desc{
-      margin-top: 9px;
+      justify-content: center;
+      padding: 8px 14px;
       font-size: 12px;
-      line-height: 1.65;
-      letter-spacing: 0.04em;
-      color: var(--text-card);
-    }
-
-    .entry-link{
-      margin-top: 12px;
-      font-size: 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(29,78,216,0.2);
+      background: var(--accent-soft);
+      color: var(--accent);
+      text-decoration: none;
       font-weight: 600;
-      letter-spacing: 0.30em;
-      color: rgba(255,255,255,0.44);
+      letter-spacing: 0.08em;
     }
 
-    @media (max-width: 900px){
-      .page{
-        width: min(100%, calc(100% - 24px));
-        padding: 24px 0 30px;
-      }
+    .btn.secondary{
+      border-color: rgba(15,27,45,0.18);
+      color: #0f1b2d;
+      background: rgba(15,27,45,0.06);
+    }
 
+    .footer{
+      margin-top: 28px;
+      color: rgba(15,27,45,0.5);
+      font-size: 12px;
+    }
+
+    @media (max-width: 720px){
       .hero{
-        margin-bottom: 34px;
-      }
-
-      .hero-mark{
-        margin-bottom: 14px;
-        letter-spacing: 0.28em;
-      }
-
-      .hero h1{
-        letter-spacing: 0.11em;
-        line-height: 1.08;
-      }
-
-      .hero-subtitle{
-        margin-top: 14px;
-        font-size: 12px;
-        letter-spacing: 0.12em;
-      }
-
-      .entry-grid{
-        gap: 14px;
-      }
-
-      .entry-card{
-        width: min(100%, 280px);
-        min-height: 146px;
-        padding: 18px 16px;
-        border-radius: var(--radius-lg);
-        transform: none;
-      }
-
-      .entry-card:hover{
-        transform: translateY(-6px);
-      }
-
-      .entry-title{
-        font-size: 22px;
-      }
-
-      .entry-desc{
-        font-size: 12px;
-      }
-
-      .entry-link{
-        margin-top: 10px;
+        flex-direction: column;
+        align-items: flex-start;
       }
     }
   </style>
 </head>
-
 <body>
-  <main class="page">
+    <main class="page">
     <section class="hero">
-      <div class="hero-mark">TAINAN RESIDENCE PORTAL</div>
-      <h1>不動產資訊查詢</h1>
-      <div class="hero-subtitle">PROPERTY INFORMATION</div>
+      <div>
+        <div class="tag">PROJECTS HUB</div>
+        <h1>cindyho.work</h1>
+        <p>這裡是我的專案首頁入口，整理目前對外展示的作品。</p>
+      </div>
     </section>
 
-    <section class="entry-grid">
-      <a class="entry-card" href="map.html">
-        <span class="glow"></span>
-        <div class="entry-content">        
-          <div class="entry-title">地圖區域探索</div>
-          <div class="entry-desc">整合成交資訊與週邊生活機能</div>
-          <div class="entry-link">VIEW</div>
+    <section class="grid">
+      <article class="card">
+        <h3>不動產資訊查詢平台(台南市篇)</h3>
+        <p>整合使用執照、實價登錄、生活機能與預售屋資訊，支援地圖與地址查詢。</p>
+        <div class="links">
+          <a class="btn" href="tnhouse.html">專案首頁</a>
         </div>
-      </a>
+      </article>
+
+      <article class="card">
+        <h3>更多專案</h3>
+        <p>後續作品會陸續補上，敬請期待。</p>
+      </article>
     </section>
+
+    <div class="footer">© cindyho.work</div>
   </main>
 </body>
 </html>
+
+
+
+
+
+
+
+
