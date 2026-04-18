@@ -10,6 +10,18 @@
 - 專案首頁（tnhouse）：<https://cindyho.work/tnhouse.html>
 - 地圖查詢：<https://cindyho.work/map.html>
 
+## API
+
+### Production API
+
+- Base URL：<https://api.cindyho.work>
+- Health Check：<https://api.cindyho.work/health>
+
+### Local API
+
+- Base URL：`http://127.0.0.1:8000`
+- Health Check：`http://127.0.0.1:8000/health`
+
 ## 專案亮點
 
 - **地址即入口**：輸入地址後，可同步查看周邊成交、生活機能、預售屋與使用執照資訊。
@@ -23,10 +35,11 @@
 
 ### 1. Projects Hub 與專案首頁
 
-- `index.html` 為 Projects Hub，統一整理對外展示作品。
+- `https://cindyho.work/` 為 Projects Hub，統一整理對外展示作品。
 - `tnhouse.html` 為本專案首頁，提供專案入口與導向地圖查詢。
 
-![首頁畫面](apps/web/image/pic2.jpg)
+![首頁畫面](apps/web/image/1-1.png)
+![專案首頁畫面](apps/web/image/1-2.png)
 
 ### 2. 地圖整合查詢
 
@@ -38,7 +51,7 @@
 - 可切換查詢半徑，例如 `500m / 1000m / 1500m`
 - 可依生活機能類別篩選結果
 
-![地圖查詢視覺](apps/web/image/pic1.jpg)
+![地圖查詢視覺](apps/web/image/1-3.png)
 
 ### 3. 使用執照查詢
 
@@ -95,6 +108,136 @@
 
 ![系統架構圖](apps/web/image/structure.jpg)
 
+## ERD
+
+這份 ERD 聚焦在專案目前實際運作的核心資料表，部分關聯是應用層邏輯關聯，不是資料庫層的 foreign key。
+
+```mermaid
+erDiagram
+    USE_PERMITS {
+        bigint id PK
+        text permit_no
+        text building_permit_no
+        text address_raw
+        text address_norm
+        date issue_date
+        date start_date
+        integer floors_above
+        integer floors_below
+        numeric height_m
+        text usage
+        integer units
+        geometry geom
+    }
+
+    PERMIT_ADDRESS_SUMMARY_TOP3 {
+        bigint permit_id
+        text permit_no
+        text addr_display
+        bigint hit_count
+        numeric max_score
+        bigint rnk
+    }
+
+    ADDRESS_POINTS_BASE {
+        bigint id PK
+        text road
+        text lane
+        text alley
+        text number_clean
+        text addr_display
+        text address_norm
+        geometry geom
+    }
+
+    REAL_PRICE_TXN {
+        bigint id PK
+        date trade_date
+        text district
+        text address_raw
+        text address_norm
+        bigint total_price
+        numeric unit_price_sqm
+        text road
+        text lane
+        text alley
+        text number_clean
+        text match_level
+        text center_source
+        geometry geom_center
+    }
+
+    POI {
+        bigint id PK
+        text source_table
+        text source_id
+        text category
+        text subtype
+        text name
+        text district
+        text address_norm
+        double lon
+        double lat
+        text center_source
+        text match_level
+    }
+
+    SCHOOLS {
+        text edu_code PK
+        text school_name
+        text stage
+        text school_type
+        text district
+        text address_norm
+        double lon
+        double lat
+        text center_source
+        text match_level
+    }
+
+    PRESALE_PROJECTS {
+        bigint id PK
+        text source_table
+        text source_id
+        text district
+        text project_name
+        text road
+        text builder
+        text household
+        text building_permit_no
+        text address_seed
+        text address_norm
+        double lon
+        double lat
+        geometry geom_center
+        text center_source
+        text match_level
+        text project_key
+    }
+
+    PRESALE_PRICE_SUMMARY {
+        bigint id PK
+        text district
+        text build_case
+        text project_key
+        integer txn_count
+        text latest_trade_date
+        bigint latest_total_price
+        numeric latest_unit_price_sqm
+        numeric avg_total_price
+        numeric avg_unit_price_sqm
+        numeric min_unit_price_sqm
+        numeric max_unit_price_sqm
+    }
+
+    USE_PERMITS ||--o{ PERMIT_ADDRESS_SUMMARY_TOP3 : "permit_id -> id"
+    ADDRESS_POINTS_BASE o{--o{ REAL_PRICE_TXN : "address matching"
+    ADDRESS_POINTS_BASE o{--o{ POI : "address matching"
+    ADDRESS_POINTS_BASE o{--o{ SCHOOLS : "address matching"
+    ADDRESS_POINTS_BASE o{--o{ PRESALE_PROJECTS : "address matching"
+    PRESALE_PROJECTS o|--o{ PRESALE_PRICE_SUMMARY : "district + project_key"
+```
+
 ## 專案結構
 
 ```text
@@ -115,8 +258,8 @@ tn-house-mvp/
 ### `apps/web/index.html`
 
 - Projects Hub 首頁
-- 統一整理所有專案入口
-- 連到 `tnhouse.html` 與 `map.html`
+- 統一整理目前對外展示的專案入口
+- 目前提供本專案卡片入口，連到 `tnhouse.html`
 
 ### `apps/web/tnhouse.html`
 
@@ -241,48 +384,15 @@ python -m http.server 5173
 
 接著打開：
 
-- `http://127.0.0.1:5173/index.html`
-- `http://127.0.0.1:5173/map.html`
+- `http://127.0.0.1:5173/index.html`：Projects Hub
+- `http://127.0.0.1:5173/tnhouse.html`：本專案首頁
+- `http://127.0.0.1:5173/map.html`：地圖查詢頁
 
 ## 部署建議
 
-### 建議模式
-
-- **模式 A：直接帶既有資料庫上 EC2**
-
-這是目前最穩、最省時間的部署方式：
-
-- 上傳必要程式檔
-- 還原既有 PostgreSQL / PostGIS 資料庫
-- 啟動 API 與靜態前端
-
-### EC2 必要檔案
-
-- `docker-compose.yml`
-- `infra/initdb/001_init.sql`
-- `apps/api/**`
-- `apps/web/**`
-
-### 不建議公開的內容
-
-- `.env`
-- `data/**`
-- `exports/**`
-- `apps/api/*.csv`
-- SQL dump
-- 手動補點座標檔
-
-## README 截圖建議
-
-如果你想讓 GitHub Repository 更完整，建議另外建立 `docs/screenshots/`，加入這些實際畫面截圖：
-
-- 首頁
-- `map.html` 主查詢頁
-- 使用執照查詢結果
-- 預售屋查詢結果
-- 生活機能與成交卡片
-
-之後只要把本 README 內的圖片路徑換掉，就能變成更完整的圖文版介紹。
+- 建議以既有 PostgreSQL / PostGIS 資料庫搭配 `docker-compose.yml`、`apps/api/**` 與 `apps/web/**` 進行部署。
+- 正式環境可將前端靜態頁面與 FastAPI API 分開佈署，以利維護與更新。
+- 敏感設定與原始資料建議保留在私有環境，不納入公開 repository。
 
 ## 適用情境
 
@@ -297,6 +407,15 @@ python -m http.server 5173
 - 使用執照查詢結果中，部分案件可能只有地號、沒有可直接定位的門牌點位。
 - 預售屋價格摘要採建案名稱與區域對照，因此部分建案可能沒有價格摘要。
 - 生活機能與地址定位高度依賴 `address_points_base` 與既有資料品質。
+
+
+
+
+
+
+
+
+
 
 
 
