@@ -91,6 +91,10 @@
 - Vanilla JavaScript
 - Leaflet
 
+## 系統架構圖
+
+![系統架構圖](apps/web/image/structure.jpg)
+
 ## 專案結構
 
 ```text
@@ -293,6 +297,9 @@ python -m http.server 5173
 - 使用執照查詢結果中，部分案件可能只有地號、沒有可直接定位的門牌點位。
 - 預售屋價格摘要採建案名稱與區域對照，因此部分建案可能沒有價格摘要。
 - 生活機能與地址定位高度依賴 `address_points_base` 與既有資料品質。
+
+
+
 
 
 
