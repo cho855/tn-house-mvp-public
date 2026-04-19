@@ -10,19 +10,9 @@
 - 專案首頁（tnhouse）：<https://cindyho.work/tnhouse.html>
 - 地圖查詢：<https://cindyho.work/map.html>
 
-## API
 
-### Production API
 
-- Base URL：<https://api.cindyho.work>
-- Health Check：<https://api.cindyho.work/health>
-
-### Local API
-
-- Base URL：`http://127.0.0.1:8000`
-- Health Check：`http://127.0.0.1:8000/health`
-
-## 專案亮點
+## Highlight
 
 - **地址即入口**：輸入地址後，可同步查看周邊成交、生活機能、預售屋與使用執照資訊。
 - **地圖式探索**：透過 Leaflet 地圖、藍色拖曳中心點與半徑查詢，快速切換不同區位。
@@ -85,7 +75,7 @@
   - 學校
 - 每筆資料可顯示名稱、距離與地址，適合地圖式探索。
 
-## 技術棧
+## Technology Stack
 
 ### Backend Stack
 
@@ -99,7 +89,7 @@
 
 ### Frontend Stack
 
-- HTML5
+- HTML
 - CSS3
 - Vanilla JavaScript
 - Leaflet
@@ -107,6 +97,19 @@
 ## 系統架構圖
 
 ![系統架構圖](apps/web/image/structure.jpg)
+
+## 核心資料表
+
+目前前端與 API 正常運作時，最核心的資料表包含：
+
+- `use_permits`
+- `real_price_txn`
+- `address_points_base`
+- `poi`
+- `schools`
+- `presale_projects`
+- `presale_price_summary`
+- `permit_address_summary_top3`
 
 ## ERD
 
@@ -281,6 +284,19 @@ tn-house-mvp/
 - 使用執照專用查詢頁
 - 適合做建照查詢的單一入口
 
+## API
+
+### Production API
+
+- API Docs：<https://api.cindyho.work/docs>
+- Health Check：<https://api.cindyho.work/health>
+- Base URL：`https://api.cindyho.work`
+
+### Local API
+
+- Base URL：`http://127.0.0.1:8000`
+- Health Check：`http://127.0.0.1:8000/health`
+
 ## 主要 API
 
 ### `/nearby_txn_by_address`
@@ -325,18 +341,6 @@ tn-house-mvp/
 - 查詢使用執照候選地址摘要
 - 適合處理只有地號、沒有完整門牌的建照資料
 
-## 核心資料表
-
-目前前端與 API 正常運作時，最核心的資料表包含：
-
-- `use_permits`
-- `real_price_txn`
-- `address_points_base`
-- `poi`
-- `schools`
-- `presale_projects`
-- `presale_price_summary`
-- `permit_address_summary_top3`
 
 ## 本機啟動方式
 
@@ -344,16 +348,6 @@ tn-house-mvp/
 
 請在專案根目錄建立 `.env`。
 
-常見欄位例如：
-
-```env
-POSTGRES_DB=tn_house
-POSTGRES_USER=tn
-POSTGRES_PASSWORD=tn
-POSTGRES_HOST=db
-POSTGRES_PORT=5432
-POSTGRES_DSN=postgresql://tn:tn@db:5432/tn_house
-```
 
 ### 2. 啟動 DB 與 API
 
@@ -407,6 +401,7 @@ python -m http.server 5173
 - 使用執照查詢結果中，部分案件可能只有地號、沒有可直接定位的門牌點位。
 - 預售屋價格摘要採建案名稱與區域對照，因此部分建案可能沒有價格摘要。
 - 生活機能與地址定位高度依賴 `address_points_base` 與既有資料品質。
+
 
 
 
